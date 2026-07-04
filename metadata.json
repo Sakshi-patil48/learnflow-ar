@@ -1,0 +1,6 @@
+{
+  "name": "LearnFlow AR",
+  "description": "An interactive 3D and AI-enhanced learning platform for classes 9-12, enabling students to scan textbooks, generate 3D models, manage custom study task lists, and learn with an AI Tutor.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
