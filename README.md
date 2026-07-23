@@ -83,3 +83,12 @@ Interested in:
 ## 📄 License
 
 MIT License
+
+---
+
+## 💖 Contributors & Acknowledgments
+
+Special thanks to all contributors for their valuable contributions to LearnFlow AR!
+
+- **Sanket Bhende** - [@mrsankya](https://github.com/mrsankya)
+
