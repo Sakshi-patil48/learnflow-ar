@@ -90,5 +90,7 @@ MIT License
 
 Special thanks to all contributors for their valuable contributions to LearnFlow AR!
 
+[<img src="https://github.com/mrsankya.png" width="60" height="60" style="border-radius: 50%;" alt="Sanket Bhende"/>](https://github.com/mrsankya)  
 - **Sanket Bhende** - [@mrsankya](https://github.com/mrsankya)
+
 
