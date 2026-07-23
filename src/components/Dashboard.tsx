@@ -95,6 +95,20 @@ export default function Dashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeAttachment, setActiveAttachment] = useState<{ name: string; mimeType: string; base64: string } | null>(null);
 
+  // Interactive Cursor Position State for Welcome Banner Particles
+  const [bannerMousePos, setBannerMousePos] = useState({ x: 0, y: 0 });
+
+  const handleBannerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
+    const mouseY = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
+    setBannerMousePos({ x: mouseX, y: mouseY });
+  };
+
+  const handleBannerMouseLeave = () => {
+    setBannerMousePos({ x: 0, y: 0 });
+  };
+
   // CBSE NCERT Chapter & Topic states
   const [booksData, setBooksData] = useState<Record<ClassLevel, Record<SubjectName, NcertBook>>>(() => {
     const saved = localStorage.getItem('cbse_custom_books');
@@ -430,9 +444,9 @@ export default function Dashboard({
           {/* Logo & Platform Name */}
           <div className="flex flex-col gap-1.5 mb-6">
             <img 
-              src="/learnflow.jpeg" 
-              alt="LearnFlow" 
-              className="h-10 w-auto object-contain self-start rounded"
+              src="/learnflow-logo.png" 
+              alt="LearnFlow AR Logo" 
+              className="h-10 w-auto object-contain self-start rounded-lg"
               referrerPolicy="no-referrer"
             />
             <span className="text-[10px] font-mono font-bold text-charcoal/40 tracking-wider block uppercase pl-0.5">
@@ -625,28 +639,44 @@ export default function Dashboard({
 
           {/* Fallback Screen: Subject NOT Selected Gate */}
           {!selectedSubject ? (
-            <div className="bg-white border border-card-border rounded-xl p-10 text-center max-w-2xl mx-auto shadow-sm my-12 animate-fade-in">
-              <BookOpen className="w-16 h-16 text-secondary mx-auto mb-4 animate-bounce" style={{ animationDuration: '3.s' }} />
-              <h2 className="text-2xl font-bold text-[#001736]">Welcome to the Academic Excellence Platform</h2>
-              <p className="text-sm text-charcoal/60 mt-3 max-w-md mx-auto leading-relaxed">
-                You are registered in **Class {classLevel}**. To begin studying, select a subject at the top header (Biology, Physics, Chemistry, or Mathematics) to load your curated 3D diagrams, live task checklists, and tutor models!
-              </p>
+            <div className="relative rounded-2xl border border-card-border/80 shadow-xl max-w-4xl mx-auto my-6 overflow-hidden bg-white animate-fade-in aspect-[16/9] min-h-[360px] sm:min-h-[440px] md:min-h-[500px] flex items-center justify-center">
+              {/* Full Background Image - Contained Aspect Ratio Fit */}
+              <img 
+                src="/dashboard-welcome-bg.png" 
+                alt="Welcome Background Frame" 
+                className="absolute inset-0 w-full h-full object-contain object-center pointer-events-none"
+              />
 
-              <div className="mt-8">
-                <p className="text-xs font-bold text-primary/60 uppercase tracking-widest font-mono mb-4">
-                  Select a core subject to start:
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mx-auto">
-                  {subjects.map((sub) => (
-                    <button
-                      key={sub}
-                      onClick={() => handleSelectSubject(sub)}
-                      className="bg-surface-container-low hover:bg-secondary/5 hover:border-[#fe6a34]/40 border border-card-border p-4 rounded-xl font-bold text-xs text-primary transition-all cursor-pointer"
-                      id={`gateway_pill_${sub}`}
-                    >
-                      {sub}
-                    </button>
-                  ))}
+              {/* Dedicated Content Area Positioned PRECISELY Inside the White Board Area */}
+              <div className="absolute top-[16%] bottom-[16%] left-[22%] right-[20%] z-10 flex flex-col items-center justify-center text-center p-2 sm:p-4 md:p-6 overflow-y-auto">
+                <div className="my-auto space-y-2 sm:space-y-3 w-full">
+                  <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-secondary mx-auto animate-bounce filter drop-shadow-xs" style={{ animationDuration: '3s' }} />
+                  
+                  <h2 className="text-sm sm:text-lg md:text-2xl font-extrabold text-[#001736] tracking-tight leading-tight">
+                    Welcome to the Academic Excellence Platform
+                  </h2>
+                  
+                  <p className="text-[10px] sm:text-xs md:text-sm text-charcoal/80 font-medium max-w-md mx-auto leading-relaxed">
+                    You are registered in <strong className="text-primary font-bold">Class {classLevel}</strong>. Select a subject below to load your curated 3D diagrams, live task checklists, and AI tutor models!
+                  </p>
+
+                  <div className="pt-2 sm:pt-3 w-full">
+                    <p className="text-[9px] sm:text-[10px] md:text-xs font-extrabold text-primary uppercase tracking-widest font-mono mb-2">
+                      Select a core subject to start:
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5 max-w-md mx-auto">
+                      {subjects.map((sub) => (
+                        <button
+                          key={sub}
+                          onClick={() => handleSelectSubject(sub)}
+                          className="bg-slate-100/90 hover:bg-secondary/15 hover:border-[#fe6a34] border border-slate-200/90 py-1.5 sm:py-2 px-2.5 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs text-primary shadow-2xs hover:shadow-xs transition-all cursor-pointer transform hover:scale-[1.02] active:scale-95"
+                          id={`gateway_pill_${sub}`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -660,29 +690,108 @@ export default function Dashboard({
               {activeTab === 'overview' && (
                 <div className="space-y-8 animate-fade-in">
                   
-                  {/* Top Welcome Banner Card - Replicates Image 2 Banner */}
-                  <div className="bg-[#001736] text-white border border-primary-light p-6 md:p-8 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
-                    <div className="space-y-3 relative z-10 max-w-xl">
-                      <h3 className="text-xl md:text-2xl font-bold">Welcome back, {userName}!</h3>
-                      <p className="text-xs md:text-sm text-white/80 leading-relaxed">
-                        Ready to dive back into <strong className="text-secondary">{selectedSubject}</strong>? Your AI Tutor has prepared 3 new interactive models based on your last scan.
+                  {/* Top Welcome Banner Card */}
+                  <div 
+                    onMouseMove={handleBannerMouseMove}
+                    onMouseLeave={handleBannerMouseLeave}
+                    className="relative text-white border border-primary-light/60 p-6 md:p-10 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 overflow-hidden bg-[#001736] group cursor-default"
+                  >
+                    {/* Full Edge-to-Edge Background Image Layer */}
+                    <img 
+                      src="/dashboard-welcome-banner-bg.png" 
+                      alt="Welcome Banner Background" 
+                      className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none opacity-75"
+                    />
+
+                    {/* 1. Gentle Flowing Light Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#001736]/90 via-[#002b5b]/60 to-[#004f7a]/40 bg-[length:200%_200%] animate-banner-gradient pointer-events-none" />
+
+                    {/* 2. Abstract Network / Grid Line Pattern Overlay (Parallax Shift on Cursor) */}
+                    <div 
+                      className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#38bdf8_1.2px,transparent_1.2px)] [background-size:24px_24px] animate-banner-grid transition-transform duration-700 ease-out" 
+                      style={{ transform: `translate(${bannerMousePos.x * 12}px, ${bannerMousePos.y * 12}px)` }}
+                    />
+
+                    {/* 3. Soft Futuristic AI-Learning Glow Orbs (Move with Parallax on Cursor) */}
+                    <div 
+                      className="absolute -right-16 -top-16 w-96 h-96 bg-cyan-400/25 rounded-full blur-3xl pointer-events-none animate-ai-orb transition-transform duration-500 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * -30}px, ${bannerMousePos.y * -30}px)` }}
+                    />
+                    <div 
+                      className="absolute right-1/3 -bottom-20 w-80 h-80 bg-teal-400/20 rounded-full blur-3xl pointer-events-none animate-particle-active-2 transition-transform duration-700 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * 35}px, ${bannerMousePos.y * 35}px)` }}
+                    />
+                    <div 
+                      className="absolute left-1/4 -top-12 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none animate-particle-active-3 transition-transform duration-500 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * 20}px, ${bannerMousePos.y * 20}px)` }}
+                    />
+
+                    {/* 4. Active Glowing Floating Balls / Particles (Cursor Reacting Physics & Continuous Motion) */}
+                    {/* Orb 1: Cyan Glowing Ball */}
+                    <div 
+                      className="absolute top-1/4 left-1/4 w-4 h-4 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(56,189,248,0.9)] pointer-events-none animate-particle-active-1 transition-transform duration-300 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * 45}px, ${bannerMousePos.y * 45}px)` }}
+                    />
+                    
+                    {/* Orb 2: Teal Glowing Ball */}
+                    <div 
+                      className="absolute top-2/3 left-1/5 w-3.5 h-3.5 rounded-full bg-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.9)] pointer-events-none animate-particle-active-2 transition-transform duration-500 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * -35}px, ${bannerMousePos.y * -35}px)` }}
+                    />
+
+                    {/* Orb 3: Blue Glowing Ball */}
+                    <div 
+                      className="absolute top-1/3 right-1/3 w-5 h-5 rounded-full bg-blue-300 shadow-[0_0_16px_rgba(147,197,253,0.95)] pointer-events-none animate-particle-active-3 transition-transform duration-300 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * 55}px, ${bannerMousePos.y * 55}px)` }}
+                    />
+
+                    {/* Orb 4: Soft Orange AI Accent Ball */}
+                    <div 
+                      className="absolute bottom-1/4 right-1/5 w-4 h-4 rounded-full bg-[#fe6a34]/80 shadow-[0_0_14px_rgba(254,106,52,0.9)] pointer-events-none animate-particle-active-1 transition-transform duration-400 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * -50}px, ${bannerMousePos.y * -50}px)` }}
+                    />
+
+                    {/* Orb 5: Light Cyan Particle */}
+                    <div 
+                      className="absolute top-1/2 left-1/2 w-3 h-3 rounded-full bg-cyan-200 shadow-[0_0_10px_rgba(165,243,252,0.95)] pointer-events-none animate-particle-active-2 transition-transform duration-600 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * 35}px, ${bannerMousePos.y * -25}px)` }}
+                    />
+
+                    {/* Orb 6: Bright Teal Micro-Orb */}
+                    <div 
+                      className="absolute top-1/5 right-1/4 w-2.5 h-2.5 rounded-full bg-emerald-300 shadow-[0_0_9px_rgba(110,231,183,0.9)] pointer-events-none animate-particle-active-3 transition-transform duration-400 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * -30}px, ${bannerMousePos.y * 40}px)` }}
+                    />
+
+                    {/* Orb 7: Bottom Left Particle */}
+                    <div 
+                      className="absolute bottom-1/3 left-1/3 w-3.5 h-3.5 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(125,211,252,0.9)] pointer-events-none animate-particle-active-1 transition-transform duration-500 ease-out"
+                      style={{ transform: `translate(${bannerMousePos.x * 40}px, ${bannerMousePos.y * -40}px)` }}
+                    />
+
+                    {/* Contrast Layer for Maximum Text Readability */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Banner Foreground Content */}
+                    <div className="space-y-3 relative z-10 max-w-2xl">
+                      <h3 className="text-xl md:text-3xl font-extrabold tracking-tight drop-shadow-sm">
+                        Welcome back, {userName}!
+                      </h3>
+                      <p className="text-xs md:text-sm text-white/90 font-medium leading-relaxed max-w-xl drop-shadow-xs">
+                        Ready to dive back into <strong className="text-secondary font-bold">{selectedSubject}</strong>? Your AI Tutor has prepared 3 new interactive models based on your last scan.
                       </p>
                       
-                      <button
-                        onClick={() => setActiveTab('scan')}
-                        className="bg-[#fe6a34] hover:bg-secondary-dark text-white text-xs py-2.5 px-5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-md self-start mt-2"
-                        id="overview_banner_scan_btn"
-                      >
-                        <Camera className="w-4 h-4" />
-                        <span>New Scan & Learn</span>
-                      </button>
+                      <div className="pt-2">
+                        <button
+                          onClick={() => setActiveTab('scan')}
+                          className="bg-[#fe6a34] hover:bg-secondary-dark text-white text-xs md:text-sm py-2.5 px-5 rounded-xl font-extrabold flex items-center gap-2 cursor-pointer transition-all shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95"
+                          id="overview_banner_scan_btn"
+                        >
+                          <Camera className="w-4 h-4" />
+                          <span>New Scan & Learn</span>
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="w-44 h-24 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center p-3 relative z-10">
-                      <Compass className="w-12 h-12 text-secondary animate-spin" style={{ animationDuration: '8s' }} />
-                    </div>
-
-                    <div className="absolute inset-0 bg-radial-gradient from-secondary/5 to-transparent pointer-events-none" />
                   </div>
 
                   {/* Learning Progress Panel (All Bars are Actively Run!) */}
@@ -691,67 +800,106 @@ export default function Dashboard({
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       
-                      {/* Completion Rate card with dynamic bar */}
-                      <div className="bg-white border border-card-border p-5 rounded-xl shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-charcoal/50 uppercase tracking-wider font-mono">
-                            Completion Rate
-                          </span>
-                          <TrendingUp className="w-5 h-5 text-emerald-500" />
+                      {/* Completion Rate card with dynamic bar & Image 1 */}
+                      <div className="bg-white border border-card-border p-5 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-charcoal/50 uppercase tracking-wider font-mono">
+                              Completion Rate
+                            </span>
+                            <TrendingUp className="w-5 h-5 text-emerald-500" />
+                          </div>
+                          <h4 className="text-3xl font-extrabold font-mono text-primary mt-1.5">{completionRate}%</h4>
                         </div>
-                        <h4 className="text-3xl font-extrabold font-mono text-primary mt-2">{completionRate}%</h4>
                         
-                        <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden mt-4">
-                          <div 
-                            className="bg-emerald-500 h-full transition-all duration-500"
-                            style={{ width: `${completionRate}%` }}
+                        {/* Image 1: Full Cover Background */}
+                        <div className="my-3 h-32 w-full rounded-lg overflow-hidden border border-card-border/60 relative shadow-2xs">
+                          <img 
+                            src="/progress-completion-rate.png" 
+                            alt="Completion Rate Growth Graph" 
+                            className="w-full h-full object-cover object-center"
                           />
                         </div>
-                        <p className="text-[10px] text-charcoal/50 mt-1.5 font-semibold">
-                          Based on core syllabus tasks finished
-                        </p>
+
+                        <div>
+                          <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-emerald-500 h-full transition-all duration-500"
+                              style={{ width: `${completionRate}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-charcoal/50 mt-1.5 font-semibold">
+                            Based on core syllabus tasks finished
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Study Time card (accumulated actively by focus timer) */}
-                      <div className="bg-white border border-card-border p-5 rounded-xl shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-charcoal/50 uppercase tracking-wider font-mono">
-                            Study Time
-                          </span>
-                          <Clock className="w-5 h-5 text-secondary animate-pulse" />
+                      {/* Study Time card & Image 2 */}
+                      <div className="bg-white border border-card-border p-5 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-charcoal/50 uppercase tracking-wider font-mono">
+                              Study Time
+                            </span>
+                            <Clock className="w-5 h-5 text-secondary animate-pulse" />
+                          </div>
+                          <h4 className="text-3xl font-extrabold font-mono text-primary mt-1.5">{studyTimeHours}h</h4>
                         </div>
-                        <h4 className="text-3xl font-extrabold font-mono text-primary mt-2">{studyTimeHours}h</h4>
-                        
-                        <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden mt-4">
-                          <div 
-                            className="bg-secondary h-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, (parseFloat(studyTimeHours) / 150) * 100)}%` }}
+
+                        {/* Image 2: Full Cover Background */}
+                        <div className="my-3 h-32 w-full rounded-lg overflow-hidden border border-card-border/60 relative shadow-2xs">
+                          <img 
+                            src="/progress-study-time.png" 
+                            alt="Study Time Books Illustration" 
+                            className="w-full h-full object-cover object-center"
                           />
                         </div>
-                        <p className="text-[10px] text-charcoal/50 mt-1.5 font-semibold">
-                          Total minutes recorded inside study sessions
-                        </p>
+
+                        <div>
+                          <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-secondary h-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, (parseFloat(studyTimeHours) / 150) * 100)}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-charcoal/50 mt-1.5 font-semibold">
+                            Total minutes recorded inside study sessions
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Concepts Mastered card */}
-                      <div className="bg-white border border-card-border p-5 rounded-xl shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-charcoal/50 uppercase tracking-wider font-mono">
-                            Concepts Mastered
-                          </span>
-                          <Award className="w-5 h-5 text-primary" />
+                      {/* Concepts Mastered card & Image 3 */}
+                      <div className="bg-white border border-card-border p-5 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-charcoal/50 uppercase tracking-wider font-mono">
+                              Concepts Mastered
+                            </span>
+                            <Award className="w-5 h-5 text-primary" />
+                          </div>
+                          <h4 className="text-3xl font-extrabold font-mono text-primary mt-1.5">{masteredCount}+</h4>
                         </div>
-                        <h4 className="text-3xl font-extrabold font-mono text-primary mt-2">{masteredCount}+</h4>
-                        
-                        <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden mt-4">
-                          <div 
-                            className="bg-primary h-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, (masteredCount / 60) * 100)}%` }}
+
+                        {/* Image 3: Full Cover Background */}
+                        <div className="my-3 h-32 w-full rounded-lg overflow-hidden border border-card-border/60 relative shadow-2xs">
+                          <img 
+                            src="/progress-concepts-mastered.png" 
+                            alt="Concepts Mastered Graduation Cap" 
+                            className="w-full h-full object-cover object-center"
                           />
                         </div>
-                        <p className="text-[10px] text-charcoal/50 mt-1.5 font-semibold">
-                          Models verified as mastered with exam annotations
-                        </p>
+
+                        <div>
+                          <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-primary h-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, (masteredCount / 60) * 100)}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-charcoal/50 mt-1.5 font-semibold">
+                            Models verified as mastered with exam annotations
+                          </p>
+                        </div>
                       </div>
 
                     </div>

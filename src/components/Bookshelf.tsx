@@ -26,10 +26,13 @@ import {
   LayoutGrid,
   Search,
   BookMarked,
-  Users
+  Users,
+  Video,
+  Maximize2,
+  Download
 } from 'lucide-react';
 import { ClassLevel, SubjectName } from '../types';
-import { NcertChapter } from '../ncertData';
+import { NcertChapter, extractYouTubeId } from '../ncertData';
 import { getChapterDetails, ChapterDetails } from '../chapterContentData';
 
 interface BookshelfProps {
@@ -246,6 +249,25 @@ export default function Bookshelf({
     reader.readAsDataURL(file);
   };
   const [simulatedPage, setSimulatedPage] = useState(1);
+  const [videoViewer, setVideoViewer] = useState<{
+    title: string;
+    embedId: string;
+    chapterId: string;
+    nodes3D?: string[];
+  } | null>(null);
+
+  const handleOpenVideo = (title: string, videoUrl: string, chapterId: string, nodes3D?: string[]) => {
+    const embedId = extractYouTubeId(videoUrl);
+    if (embedId) {
+      setVideoViewer({
+        title,
+        embedId,
+        chapterId,
+        nodes3D
+      });
+    }
+  };
+
   const [quizState, setQuizState] = useState<{
     isActive: boolean;
     currentQuestionIdx: number;
@@ -907,6 +929,16 @@ export default function Bookshelf({
                             </span>
                           )}
                         </div>
+
+                        {/* YOUTUBE ANIMATED VIDEO BADGE */}
+                        {(chapter.youtubeVideoUrl || bookDetails?.youtubeVideoUrl) && (
+                          <div className="absolute bottom-3 left-3 bg-red-600/90 text-white backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/20 shadow-md">
+                            <Play className="w-3 h-3 fill-white text-white shrink-0" />
+                            <span className="text-[9px] font-black font-mono uppercase tracking-wider">
+                              Animated Video
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Content Block */}
@@ -1034,398 +1066,570 @@ export default function Bookshelf({
 
         </div>
       ) : (
-        /* ==================== CHAPTER DETAILS & OVERVIEW ==================== */
-        <div className="space-y-6">
-          {/* BACK TO BOOKSHELF BUTTON */}
-          <button
-            onClick={() => {
-              setSelectedChapter(null);
-              setQuizState(null);
-            }}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-primary transition-all cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-card-border shadow-3xs"
-            id="btn_back_to_bookshelf"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Back to Bookshelf</span>
-          </button>
+        /* ==================== REDESIGNED CHAPTER DETAIL PAGE (PIXEL MATCH REFERENCE) ==================== */
+        <div className="space-y-8 animate-fade-in font-sans">
+          
+          {/* BACK TO BOOKSHELF BUTTON BAR */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <button
+              onClick={() => {
+                setSelectedChapter(null);
+                setQuizState(null);
+              }}
+              className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-700 hover:text-slate-900 transition-all cursor-pointer bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-3xs hover:shadow-2xs"
+              id="btn_back_to_bookshelf"
+            >
+              <ChevronLeft className="w-4 h-4 text-slate-500" />
+              <span>← Back to My Library</span>
+            </button>
 
-          {/* DETAIL GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* LEFT COLUMN: CHAPTER COVER BOOKLET (4 cols) */}
-            <div className="lg:col-span-4 bg-white border border-card-border rounded-xl p-5 shadow-2xs space-y-4">
-              <div className="mx-auto w-36 h-52 rounded-r-xl shadow-lg relative overflow-hidden border border-gray-200/60 bg-white group">
-                <img 
-                  src={
-                    subject === 'Mathematics' ? (classLevel === '12th' ? "/maths 12.jpeg" : "/math11.jpeg") :
-                    subject === 'Physics' ? (classLevel === '12th' ? "/phy12.jpeg" : "/11phy.jp.jpeg") :
-                    subject === 'Biology' ? (classLevel === '12th' ? "/bio12.jpeg" : "/bio11.jpeg") :
-                    subject === 'Chemistry' ? (classLevel === '12th' ? "/chem 12.jpeg" : "/11chem.jpeg") : ""
-                  }
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.style.display = 'none';
-                  }}
-                  alt={`${subject} Class ${classLevel} Cover`} 
-                  className="w-full h-full object-cover" 
-                  referrerPolicy="no-referrer"
-                />
-                {/* Spine Shading */}
-                <div className="absolute left-0 top-0 bottom-0 w-3 bg-black/15 rounded-l-xs z-10" />
-                <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-white/10 z-10" />
-                
-                {/* Text Overlay for chapters */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/25 flex flex-col justify-between p-4 text-left z-10">
-                  <div className="space-y-1">
-                    <span className="text-[9px] font-mono font-bold text-white/75 uppercase tracking-widest block">CBSE Syllabus</span>
-                    <span className="text-[10px] font-mono font-extrabold text-[#fe6a34] tracking-wider block">CH-{selectedChapter.number}</span>
-                    <h3 className="text-[11px] font-black text-white leading-snug font-sans uppercase mt-1 line-clamp-3">
-                      {selectedChapter.title}
-                    </h3>
-                  </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-slate-200/80 text-slate-700 px-3 py-1 rounded-full border border-slate-300/50">
+                {subject} • Class {classLevel} NCERT
+              </span>
+            </div>
+          </div>
 
-                  <div className="space-y-1.5 border-t border-white/20 pt-2">
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: details?.difficultyStars || 4 }).map((_, i) => (
-                        <Star key={i} className="w-2.5 h-2.5 text-amber-300 fill-amber-300" />
-                      ))}
-                    </div>
-                    <div className="flex justify-between items-center text-[8px] font-mono text-white/80">
-                      <span>{details?.readTimeMins} MINS READ</span>
-                      <span>100% RELEVANT</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {completedChapters.includes(selectedChapter.id) && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-3 text-center flex items-center justify-center gap-1.5 shadow-3xs animate-fade-in">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 fill-emerald-100 shrink-0" />
-                  <span className="text-xs font-extrabold font-sans">Chapter Completed ✓</span>
-                </div>
-              )}
-
-              <div className="border-t border-card-border pt-4 space-y-3.5">
-                <div>
-                  <h4 className="text-xs font-extrabold text-primary uppercase font-mono tracking-wider flex items-center gap-1.5">
-                    <Star className="w-4 h-4 text-secondary fill-secondary" />
-                    <span>Difficulty & Scope</span>
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs font-bold text-primary">CBSE Rating:</span>
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-3.5 h-3.5 ${
-                            i < (details?.difficultyStars || 4) 
-                              ? 'text-amber-400 fill-amber-400' 
-                              : 'text-charcoal/20'
-                          }`} 
-                        />
-                      ))}
-                    </div>
-                    <span className="text-[11px] text-charcoal/50 font-mono">({details?.difficultyStars}/5 Stars)</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-xs font-extrabold text-primary uppercase font-mono tracking-wider flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-secondary" />
-                    <span>Average Completion</span>
-                  </h4>
-                  <p className="text-xs text-charcoal/60 mt-1 leading-relaxed">
-                    Designed as a <strong>{details?.readTimeMins} minutes study cycle</strong> before starting interactive 3D modeling and dynamic AI quizzing.
-                  </p>
-                </div>
-              </div>
+          {/* 1. CHAPTER HEADER SECTION (REFERENCE IMAGE MATCH) */}
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 bg-white/40 p-4 sm:p-6 rounded-3xl">
+            {/* 3D Textbook Cover Graphic (Left) */}
+            <div className="w-36 sm:w-44 h-52 sm:h-64 rounded-r-2xl rounded-l-md overflow-hidden shadow-2xl border-2 border-slate-200/80 shrink-0 relative transform hover:scale-[1.02] transition-transform duration-300 bg-white">
+              {renderChapterGraphic(subject, selectedChapter.number, classLevel)}
             </div>
 
-            {/* RIGHT COLUMN: INTERACTIVE TABS & CONTENT (8 cols) */}
-            <div className="lg:col-span-8 bg-white border border-card-border rounded-xl shadow-2xs overflow-hidden flex flex-col min-h-[480px]">
-              
-              {/* TAB BAR HEADER */}
-              <div className="border-b border-card-border bg-surface-container-lowest flex flex-wrap gap-1 p-2">
-                <button
-                  onClick={() => { setActiveTab('book'); setQuizState(null); }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'book' && !quizState?.isActive
-                      ? 'bg-primary text-white'
-                      : 'text-[#fe6a34] bg-[#fe6a34]/10 hover:bg-[#fe6a34]/20 font-extrabold'
-                  }`}
-                  id="tab_btn_book"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>2D Book & PDF</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('notes'); setQuizState(null); }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'notes' && !quizState?.isActive
-                      ? 'bg-primary text-white'
-                      : 'text-charcoal/60 hover:bg-surface-container hover:text-charcoal'
-                  }`}
-                  id="tab_btn_notes"
-                >
-                  <Book className="w-3.5 h-3.5" />
-                  <span>Short Notes</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('formulas'); setQuizState(null); }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'formulas' && !quizState?.isActive
-                      ? 'bg-primary text-white'
-                      : 'text-charcoal/60 hover:bg-surface-container hover:text-charcoal'
-                  }`}
-                  id="tab_btn_formulas"
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span>Formula Sheet</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('concepts'); setQuizState(null); }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'concepts' && !quizState?.isActive
-                      ? 'bg-primary text-white'
-                      : 'text-charcoal/60 hover:bg-surface-container hover:text-charcoal'
-                  }`}
-                  id="tab_btn_concepts"
-                >
-                  <Brain className="w-3.5 h-3.5" />
-                  <span>Key Concepts</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('diagrams'); setQuizState(null); }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'diagrams' && !quizState?.isActive
-                      ? 'bg-primary text-white'
-                      : 'text-charcoal/60 hover:bg-surface-container hover:text-charcoal'
-                  }`}
-                  id="tab_btn_diagrams"
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>Diagrams</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('objectives'); setQuizState(null); }}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === 'objectives' && !quizState?.isActive
-                      ? 'bg-primary text-white'
-                      : 'text-charcoal/60 hover:bg-surface-container hover:text-charcoal'
-                  }`}
-                  id="tab_btn_objectives"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Objectives</span>
-                </button>
+            {/* Metadata & Title (Right) */}
+            <div className="flex-1 space-y-4 text-center md:text-left">
+              {/* Badges */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+                <span className="bg-slate-200/80 text-slate-700 text-xs px-3.5 py-1 rounded-full font-bold">
+                  {subject}
+                </span>
+                <span className="bg-slate-200/80 text-slate-700 text-xs px-3.5 py-1 rounded-full font-bold">
+                  Class {classLevel}
+                </span>
+                <span className="bg-amber-100 text-amber-700 text-xs px-3.5 py-1 rounded-full font-bold">
+                  Difficulty: {details?.difficultyStars && details.difficultyStars > 3 ? 'Advanced' : 'Medium'}
+                </span>
               </div>
 
-              {/* DYNAMIC TAB BODY */}
-              <div className="p-6 flex-1 overflow-y-auto max-h-[380px]">
-                {quizState?.isActive ? (
-                  /* ==================== ACTIVE QUIZ VIEW ==================== */
-                  <div className="space-y-6">
-                    {quizState.currentQuestionIdx >= (details?.quiz.length || 0) ? (
-                      /* QUIZ RESULTS */
-                      <div className="text-center space-y-4 py-6 animate-fade-in">
-                        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
-                          <Award className="w-8 h-8 text-emerald-600 animate-bounce" />
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="text-lg font-bold text-primary">Assessment Completed!</h3>
-                          <p className="text-xs text-charcoal/60">Practice session for "{selectedChapter.title}"</p>
-                        </div>
+              {/* Big Chapter Title */}
+              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight leading-tight">
+                {selectedChapter.title}
+              </h1>
+            </div>
+          </div>
 
-                        <div className="bg-surface-container-low max-w-sm mx-auto p-4 rounded-xl border border-card-border space-y-3">
-                          <div className="flex justify-between items-center text-xs font-bold">
-                            <span className="text-charcoal/60">Final Score:</span>
-                            <span className="text-primary font-mono text-sm">
-                              {quizState.score} / {details?.quiz.length}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs font-bold">
-                            <span className="text-charcoal/60">Accuracy Rate:</span>
-                            <span className="text-secondary font-mono text-sm">
-                              {Math.round((quizState.score / (details?.quiz.length || 1)) * 100)}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs font-bold">
-                            <span className="text-charcoal/60">Grade standard:</span>
-                            <span className="text-emerald-600 font-bold">
-                              {quizState.score >= 8 ? 'EXCELLENT (A1)' : quizState.score >= 5 ? 'GOOD (B2)' : 'NEEDS PRACTICE'}
-                            </span>
-                          </div>
-                        </div>
+          {/* MAIN DETAIL GRID (Desktop: 8 cols Left, 4 cols Right Sidebar) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* ==================== LEFT COLUMN: MAIN CONTENT (8 cols) ==================== */}
+            <div className="lg:col-span-8 space-y-8">
+              
+              {/* 2. WATCH VIDEO LESSON CARD */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900 font-sans">Watch Video Lesson</h3>
+                  
+                  <button
+                    onClick={() => {
+                      const videoUrl = details?.youtubeVideoUrl || selectedChapter.youtubeVideoUrl;
+                      const embedId = extractYouTubeId(videoUrl);
+                      if (embedId) {
+                        handleOpenVideo(selectedChapter.title, videoUrl!, selectedChapter.id, details?.nodes3D);
+                      }
+                    }}
+                    className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-xl transition-all"
+                    id="btn_theater_mode"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Theater Mode</span>
+                  </button>
+                </div>
 
-                        <div className="flex justify-center gap-3 pt-2">
-                          <button
-                            onClick={handleStartQuiz}
-                            className="bg-primary hover:bg-primary-light text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-all cursor-pointer shadow-3xs"
-                          >
-                            Restart Quiz
-                          </button>
-                          <button
-                            onClick={() => setQuizState(null)}
-                            className="bg-white hover:bg-surface-container text-charcoal border border-card-border text-xs font-bold px-4 py-2.5 rounded-lg transition-all cursor-pointer shadow-3xs"
-                          >
-                            Return to Notes
-                          </button>
-                        </div>
+                {/* Video Player Area */}
+                {(() => {
+                  const videoUrl = details?.youtubeVideoUrl || selectedChapter.youtubeVideoUrl;
+                  const embedId = extractYouTubeId(videoUrl);
+
+                  if (embedId) {
+                    return (
+                      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black relative shadow-md group">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${embedId}?autoplay=0&rel=0`}
+                          title={selectedChapter.title}
+                          className="w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          allowFullScreen
+                        />
                       </div>
-                    ) : (
-                      /* ACTIVE QUESTION PLAYING */
-                      <div className="space-y-5 animate-fade-in">
-                        <div className="flex justify-between items-center border-b border-card-border pb-3.5">
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] font-mono font-bold text-secondary uppercase tracking-widest">
-                              CBSE Practice Quiz
-                            </span>
-                            <h3 className="text-sm font-extrabold text-primary">
-                              Question {quizState.currentQuestionIdx + 1} of {details?.quiz.length}
-                            </h3>
-                          </div>
-                          <button 
-                            onClick={() => setQuizState(null)}
-                            className="p-1 hover:bg-charcoal/5 rounded-full text-charcoal/40 hover:text-charcoal transition-all cursor-pointer"
-                            title="Quit quiz"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
+                    );
+                  }
 
-                        {/* Question Text */}
-                        <p className="text-xs font-extrabold text-primary leading-relaxed bg-surface-container-low/60 border border-card-border p-3 rounded-lg">
-                          {details?.quiz[quizState.currentQuestionIdx].question}
-                        </p>
+                  return (
+                    <div className="w-full aspect-video rounded-2xl bg-slate-300/80 flex flex-col items-center justify-center p-6 text-center space-y-3 relative overflow-hidden">
+                      <button
+                        onClick={() => onExploreIn3D(selectedChapter.title, details?.nodes3D || ['Concept'])}
+                        className="w-16 h-16 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 transform hover:scale-110 transition-transform cursor-pointer"
+                        title="Play interactive 3D model"
+                      >
+                        <Play className="w-7 h-7 fill-white translate-x-0.5" />
+                      </button>
+                      <p className="text-xs font-bold text-slate-600">Video lesson coming soon for this chapter</p>
+                    </div>
+                  );
+                })()}
+              </div>
 
-                        {/* Options */}
-                        <div className="grid grid-cols-1 gap-2.5">
-                          {details?.quiz[quizState.currentQuestionIdx].options.map((option, oIdx) => {
-                            const isSelected = quizState.selectedOptionIdx === oIdx;
-                            const isSubmitted = quizState.isSubmitted;
-                            const correctIdx = details?.quiz[quizState.currentQuestionIdx].answerIndex;
-                            const isCorrectOption = oIdx === correctIdx;
-
-                            let optionStyle = 'border-card-border bg-white hover:bg-surface-container-low';
-                            if (isSelected) {
-                              optionStyle = 'border-primary bg-primary/5 text-primary ring-2 ring-primary/10';
-                            }
-                            if (isSubmitted) {
-                              if (isCorrectOption) {
-                                optionStyle = 'border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-2 ring-emerald-100';
-                              } else if (isSelected) {
-                                optionStyle = 'border-red-500 bg-red-50/50 text-red-700 ring-2 ring-red-100';
-                              } else {
-                                optionStyle = 'border-card-border opacity-50 bg-white';
-                              }
-                            }
-
-                            return (
-                              <button
-                                key={oIdx}
-                                onClick={() => handleSelectOption(oIdx)}
-                                disabled={isSubmitted}
-                                className={`text-left p-3.5 border rounded-lg text-xs font-bold transition-all flex items-center justify-between gap-3 cursor-pointer ${optionStyle}`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                                    isSelected 
-                                      ? 'bg-primary text-white' 
-                                      : 'bg-surface-container text-charcoal/60'
-                                  }`}>
-                                    {String.fromCharCode(65 + oIdx)}
-                                  </span>
-                                  <span>{option}</span>
-                                </div>
-                                {isSubmitted && isCorrectOption && (
-                                  <span className="text-xs text-emerald-600 font-extrabold font-mono">CORRECT</span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Feedback and Explanation */}
-                        {quizState.isSubmitted && (
-                          <div className="bg-surface-container border border-card-border p-4 rounded-lg space-y-1.5 animate-fade-in text-[11px]">
-                            <h4 className="font-extrabold text-primary flex items-center gap-1">
-                              <Info className="w-3.5 h-3.5 text-secondary" />
-                              <span>Academic Explanation:</span>
-                            </h4>
-                            <p className="text-charcoal/70 leading-relaxed font-sans">
-                              {details?.quiz[quizState.currentQuestionIdx].explanation}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Footer Action Buttons */}
-                        <div className="flex justify-end gap-3 pt-2.5 border-t border-card-border">
-                          {!quizState.isSubmitted ? (
-                            <button
-                              onClick={handleSubmitAnswer}
-                              disabled={quizState.selectedOptionIdx === null}
-                              className="bg-secondary hover:bg-secondary-dark text-white text-xs font-bold px-5 py-2.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-3xs cursor-pointer flex items-center gap-1"
-                            >
-                              <span>Submit Answer</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={handleNextQuestion}
-                              className="bg-primary hover:bg-primary-light text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-all shadow-3xs cursor-pointer flex items-center gap-1"
-                            >
-                              <span>
-                                {quizState.currentQuestionIdx + 1 >= (details?.quiz.length || 0) ? 'Finish Quiz' : 'Next Question'}
-                              </span>
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+              {/* 4. COMPLETE CHAPTER PDF CARD */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center gap-6">
+                {/* Left PDF Visual */}
+                <div className="w-28 h-36 bg-slate-100 rounded-2xl border border-slate-200 shrink-0 flex flex-col items-center justify-center p-3 text-slate-400 relative shadow-xs">
+                  <div className="w-12 h-14 bg-slate-200/80 rounded-lg border border-slate-300 flex flex-col justify-between p-1.5">
+                    <div className="w-6 h-1 bg-slate-400 rounded-full" />
+                    <div className="w-8 h-1 bg-slate-300 rounded-full" />
+                    <div className="w-7 h-1 bg-slate-300 rounded-full" />
+                    <div className="w-4 h-4 bg-slate-300 rounded mx-auto flex items-center justify-center text-[7px] font-bold text-slate-600">
+                      PDF
+                    </div>
                   </div>
-                ) : (
-                  /* ==================== REGULAR TEXTBOOK TAB CONTENT ==================== */
-                  <div className="space-y-4 animate-fade-in">
-                    
-                    {/* 2D BOOK & PDF TAB */}
-                    {activeTab === 'book' && selectedChapter && (
-                      <div className="space-y-4">
-                        
-                        {/* If custom PDF/image has been uploaded for this chapter */}
-                        {chapterPdfs[selectedChapter.id] ? (
-                          <div className="border border-card-border rounded-xl overflow-hidden bg-[#efebe9] h-[450px] shadow-sm flex flex-col justify-between">
-                            {/* PDF/Image Viewer Top bar */}
-                            <div className="bg-primary text-white px-4 py-2.5 flex flex-wrap gap-2 items-center justify-between text-xs font-bold border-b border-primary-light">
-                              <div className="flex items-center gap-2 font-mono">
-                                <FileText className="w-4 h-4 text-secondary animate-pulse" />
-                                <span className="font-extrabold truncate max-w-[200px] sm:max-w-md">
-                                  {chapterPdfs[selectedChapter.id].name}
-                                </span>
-                                <span className="text-[9px] bg-secondary/20 border border-secondary/40 text-secondary px-1.5 py-0.5 rounded uppercase">
-                                  {chapterPdfs[selectedChapter.id].type?.startsWith('image/') ? 'Image' : 'PDF'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    const fileObj = chapterPdfs[selectedChapter.id];
-                                    onAskAI(selectedChapter.title, undefined, {
-                                      name: fileObj.name,
-                                      mimeType: fileObj.type || (fileObj.name.endsWith('.pdf') ? 'application/pdf' : 'image/png'),
-                                      base64: fileObj.base64 || ''
-                                    });
-                                  }}
-                                  className="bg-emerald-600 hover:bg-emerald-500 text-white transition-all font-black text-[10.5px] flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border border-emerald-700 shadow-3xs"
-                                  title="Send this file to AI Tutor to ask custom doubt questions"
-                                >
-                                  <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                                  <span>Ask AI Tutor Doubts</span>
-                                </button>
+                </div>
 
+                {/* Right Info & Actions */}
+                <div className="flex-1 space-y-3 text-center sm:text-left">
+                  <h3 className="text-lg font-bold text-slate-900">Complete Chapter PDF</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-xl font-medium">
+                    Master the theoretical foundations with our comprehensive, AR-linked textbook chapter. Includes exclusive diagrams and interactive scan points.
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1">
+                    {selectedChapter.pdfUrl ? (
+                      <a
+                        href={selectedChapter.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-[#0a192f] hover:bg-[#112240] text-white px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                        id={`btn_complete_pdf_${selectedChapter.id}`}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Open Full PDF</span>
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => setActiveTab('book')}
+                        className="bg-[#0a192f] hover:bg-[#112240] text-white px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                        id={`btn_complete_pdf_${selectedChapter.id}`}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>Open Digital Book</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        if (selectedChapter.pdfUrl) {
+                          window.open(selectedChapter.pdfUrl, '_blank');
+                        } else {
+                          setActiveTab('book');
+                        }
+                      }}
+                      className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                      id="btn_download_offline"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Offline</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. SHORT NOTES & LEARNING CONTENT CARD */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                {/* TAB BAR HEADER */}
+                <div className="border-b border-slate-100 flex flex-wrap gap-6 text-sm font-bold pb-2">
+                  <button
+                    onClick={() => { setActiveTab('notes'); setQuizState(null); }}
+                    className={`pb-2 transition-all cursor-pointer ${
+                      activeTab === 'notes' && !quizState?.isActive
+                        ? 'border-b-2 border-orange-500 text-slate-900 font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                    id="tab_btn_notes"
+                  >
+                    Short Notes
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('formulas'); setQuizState(null); }}
+                    className={`pb-2 transition-all cursor-pointer ${
+                      activeTab === 'formulas' && !quizState?.isActive
+                        ? 'border-b-2 border-orange-500 text-slate-900 font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                    id="tab_btn_formulas"
+                  >
+                    Formula Sheet
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('concepts'); setQuizState(null); }}
+                    className={`pb-2 transition-all cursor-pointer ${
+                      activeTab === 'concepts' && !quizState?.isActive
+                        ? 'border-b-2 border-orange-500 text-slate-900 font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                    id="tab_btn_concepts"
+                  >
+                    Key Concepts
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('diagrams'); setQuizState(null); }}
+                    className={`pb-2 transition-all cursor-pointer ${
+                      activeTab === 'diagrams' && !quizState?.isActive
+                        ? 'border-b-2 border-orange-500 text-slate-900 font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                    id="tab_btn_diagrams"
+                  >
+                    Diagrams
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('objectives'); setQuizState(null); }}
+                    className={`pb-2 transition-all cursor-pointer ${
+                      activeTab === 'objectives' && !quizState?.isActive
+                        ? 'border-b-2 border-orange-500 text-slate-900 font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                    id="tab_btn_objectives"
+                  >
+                    Objectives
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('book'); setQuizState(null); }}
+                    className={`pb-2 transition-all cursor-pointer ${
+                      activeTab === 'book' && !quizState?.isActive
+                        ? 'border-b-2 border-orange-500 text-slate-900 font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                    id="tab_btn_book"
+                  >
+                    Digital PDF & Import
+                  </button>
+                </div>
+
+                {/* DYNAMIC TAB BODY */}
+                <div className="pt-2">
+                  {quizState?.isActive ? (
+                    /* ==================== ACTIVE QUIZ VIEW ==================== */
+                    <div className="space-y-6">
+                      {quizState.currentQuestionIdx >= (details?.quiz.length || 0) ? (
+                        /* QUIZ RESULTS */
+                        <div className="text-center space-y-4 py-6 animate-fade-in">
+                          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                            <Award className="w-8 h-8 text-emerald-600 animate-bounce" />
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-lg font-bold text-slate-900">Assessment Completed!</h3>
+                            <p className="text-xs text-slate-500">Practice session for "{selectedChapter.title}"</p>
+                          </div>
+
+                          <div className="bg-slate-50 max-w-sm mx-auto p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div className="flex justify-between items-center text-xs font-bold">
+                              <span className="text-slate-500">Final Score:</span>
+                              <span className="text-slate-900 font-mono text-sm">
+                                {quizState.score} / {details?.quiz.length}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold">
+                              <span className="text-slate-500">Accuracy Rate:</span>
+                              <span className="text-amber-600 font-mono text-sm">
+                                {Math.round((quizState.score / (details?.quiz.length || 1)) * 100)}%
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-center gap-3 pt-2">
+                            <button
+                              onClick={handleStartQuiz}
+                              className="bg-[#0a192f] hover:bg-[#112240] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-3xs"
+                            >
+                              Restart Quiz
+                            </button>
+                            <button
+                              onClick={() => setQuizState(null)}
+                              className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-3xs"
+                            >
+                              Return to Notes
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ACTIVE QUESTION PLAYING */
+                        <div className="space-y-5 animate-fade-in">
+                          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-mono font-bold text-amber-600 uppercase tracking-widest">
+                                CBSE Practice Quiz
+                              </span>
+                              <h3 className="text-sm font-extrabold text-slate-900">
+                                Question {quizState.currentQuestionIdx + 1} of {details?.quiz.length}
+                              </h3>
+                            </div>
+                            <button 
+                              onClick={() => setQuizState(null)}
+                              className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+                              title="Quit quiz"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <p className="text-xs font-extrabold text-slate-900 leading-relaxed bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                            {details?.quiz[quizState.currentQuestionIdx].question}
+                          </p>
+
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {details?.quiz[quizState.currentQuestionIdx].options.map((option, oIdx) => {
+                              const isSelected = quizState.selectedOptionIdx === oIdx;
+                              const isSubmitted = quizState.isSubmitted;
+                              const correctIdx = details?.quiz[quizState.currentQuestionIdx].answerIndex;
+                              const isCorrectOption = oIdx === correctIdx;
+
+                              let optionStyle = 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800';
+                              if (isSelected) {
+                                optionStyle = 'border-[#0a192f] bg-[#0a192f]/5 text-[#0a192f] ring-2 ring-[#0a192f]/10';
+                              }
+                              if (isSubmitted) {
+                                if (isCorrectOption) {
+                                  optionStyle = 'border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-2 ring-emerald-100';
+                                } else if (isSelected) {
+                                  optionStyle = 'border-red-500 bg-red-50/50 text-red-700 ring-2 ring-red-100';
+                                } else {
+                                  optionStyle = 'border-slate-200 opacity-50 bg-white';
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={oIdx}
+                                  onClick={() => handleSelectOption(oIdx)}
+                                  disabled={isSubmitted}
+                                  className={`text-left p-3.5 border rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-3 cursor-pointer ${optionStyle}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                      isSelected 
+                                        ? 'bg-[#0a192f] text-white' 
+                                        : 'bg-slate-100 text-slate-600'
+                                    }`}>
+                                      {String.fromCharCode(65 + oIdx)}
+                                    </span>
+                                    <span>{option}</span>
+                                  </div>
+                                  {isSubmitted && isCorrectOption && (
+                                    <span className="text-xs text-emerald-600 font-extrabold font-mono">CORRECT</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {quizState.isSubmitted && (
+                            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-1.5 animate-fade-in text-[11px]">
+                              <h4 className="font-extrabold text-slate-900 flex items-center gap-1">
+                                <Info className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Academic Explanation:</span>
+                              </h4>
+                              <p className="text-slate-600 leading-relaxed font-sans">
+                                {details?.quiz[quizState.currentQuestionIdx].explanation}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex justify-end gap-3 pt-2.5 border-t border-slate-100">
+                            {!quizState.isSubmitted ? (
+                              <button
+                                onClick={handleSubmitAnswer}
+                                disabled={quizState.selectedOptionIdx === null}
+                                className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-3xs cursor-pointer flex items-center gap-1"
+                              >
+                                <span>Submit Answer</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={handleNextQuestion}
+                                className="bg-[#0a192f] hover:bg-[#112240] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-3xs cursor-pointer flex items-center gap-1"
+                              >
+                                <span>
+                                  {quizState.currentQuestionIdx + 1 >= (details?.quiz.length || 0) ? 'Finish Quiz' : 'Next Question'}
+                                </span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ==================== REGULAR TAB CONTENT ==================== */
+                    <div className="space-y-4 animate-fade-in">
+                      
+                      {/* SHORT NOTES TAB (MATCHING REFERENCE IMAGE FORMAT) */}
+                      {activeTab === 'notes' && (
+                        <div className="space-y-5">
+                          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                            Newton's laws of motion are three physical laws that, together, laid the foundation for classical mechanics. They describe the relationship between a body and the forces acting upon it, and its motion in response to those forces.
+                          </p>
+
+                          <div className="space-y-4 pt-1">
+                            {details?.shortNotes && details.shortNotes.length > 0 ? (
+                              details.shortNotes.map((note, idx) => (
+                                <div key={idx} className="flex gap-3 items-start">
+                                  <span className="text-xs font-mono font-black text-amber-600 shrink-0 mt-0.5">
+                                    {(idx + 1).toString().padStart(2, '0')}.
+                                  </span>
+                                  <p
+                                    className="text-xs text-slate-700 leading-relaxed font-medium"
+                                    dangerouslySetInnerHTML={{
+                                      __html: note.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 font-bold">$1</strong>')
+                                    }}
+                                  />
+                                </div>
+                              ))
+                            ) : (
+                              <>
+                                <div className="flex gap-3 items-start">
+                                  <span className="text-xs font-mono font-black text-amber-600 shrink-0 mt-0.5">01.</span>
+                                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                    <strong className="text-slate-900 font-bold">First Law (Law of Inertia):</strong> An object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an unbalanced force.
+                                  </p>
+                                </div>
+                                <div className="flex gap-3 items-start">
+                                  <span className="text-xs font-mono font-black text-amber-600 shrink-0 mt-0.5">02.</span>
+                                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                    <strong className="text-slate-900 font-bold">Second Law (F=ma):</strong> The acceleration of an object as produced by a net force is directly proportional to the magnitude of the net force.
+                                  </p>
+                                </div>
+                                <div className="flex gap-3 items-start">
+                                  <span className="text-xs font-mono font-black text-amber-600 shrink-0 mt-0.5">03.</span>
+                                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                    <strong className="text-slate-900 font-bold">Third Law (Action-Reaction):</strong> For every action, there is an equal and opposite reaction.
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* FORMULA TAB */}
+                      {activeTab === 'formulas' && details && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-amber-600">
+                            Important Formula Sheet
+                          </h4>
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {details.formulas.map((form, idx) => (
+                              <div key={idx} className="border border-slate-200 rounded-xl bg-slate-50 p-3 flex items-center gap-3">
+                                <span className="text-[10px] font-mono font-bold bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded border border-slate-300/50 shrink-0">
+                                  EQ {idx + 1}
+                                </span>
+                                <p className="text-xs font-mono font-extrabold text-slate-900 bg-white p-2 border border-slate-200 rounded flex-1">
+                                  {form}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* KEY CONCEPTS TAB */}
+                      {activeTab === 'concepts' && details && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-amber-600">
+                            Key Academic Concepts
+                          </h4>
+                          <div className="space-y-3">
+                            {details.keyConcepts.map((concept, idx) => (
+                              <div key={idx} className="border border-slate-200 rounded-2xl p-4 bg-white shadow-3xs hover:border-slate-400 transition-all">
+                                <h5 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                                  <span>{concept.title}</span>
+                                </h5>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed pl-3 font-medium">
+                                  {concept.description}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* DIAGRAMS TAB */}
+                      {activeTab === 'diagrams' && details && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-amber-600">
+                            Important Curriculum Diagrams
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {details.diagrams.map((diag, idx) => (
+                              <div key={idx} className="border border-slate-200 rounded-2xl p-3.5 bg-slate-50 shadow-3xs flex flex-col justify-between">
+                                <div className="space-y-1.5">
+                                  <div className="border border-slate-200 bg-white rounded-xl aspect-video flex items-center justify-center p-3 relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_0.8px,transparent_0.8px)] [background-size:10px_10px] opacity-60" />
+                                    <div className="relative text-center p-2">
+                                      <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">CBSE DIAGRAM {idx + 1}</span>
+                                      <p className="text-xs font-extrabold text-slate-900 mt-2">{diag.title}</p>
+                                    </div>
+                                  </div>
+                                  <h5 className="text-xs font-extrabold text-slate-900 mt-1.5">{diag.title}</h5>
+                                  <p className="text-[11px] text-slate-500 leading-normal line-clamp-3">
+                                    {diag.description}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* OBJECTIVES TAB */}
+                      {activeTab === 'objectives' && details && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-amber-600">
+                            Learning Objectives & Outcomes
+                          </h4>
+                          <div className="space-y-2.5">
+                            {details.learningObjectives.map((obj, idx) => (
+                              <div key={idx} className="flex items-start gap-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                                  {obj}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* DIGITAL BOOK & UPLOADER TAB */}
+                      {activeTab === 'book' && selectedChapter && (
+                        <div className="space-y-4">
+                          {chapterPdfs[selectedChapter.id] ? (
+                            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-[#efebe9] h-[450px] shadow-sm flex flex-col justify-between">
+                              <div className="bg-[#0a192f] text-white px-4 py-2.5 flex flex-wrap gap-2 items-center justify-between text-xs font-bold">
+                                <div className="flex items-center gap-2 font-mono">
+                                  <FileText className="w-4 h-4 text-amber-400" />
+                                  <span className="font-extrabold truncate max-w-[200px] sm:max-w-md">
+                                    {chapterPdfs[selectedChapter.id].name}
+                                  </span>
+                                </div>
                                 <button 
                                   onClick={() => {
-                                    // Clean up object URL to prevent memory leaks
                                     try { URL.revokeObjectURL(chapterPdfs[selectedChapter.id].url); } catch(e){}
                                     setChapterPdfs(prev => {
                                       const copy = { ...prev };
@@ -1433,373 +1637,294 @@ export default function Bookshelf({
                                       return copy;
                                     });
                                   }}
-                                  className="text-red-300 hover:text-red-200 transition-all font-black text-[11px] flex items-center gap-1 cursor-pointer bg-white/10 hover:bg-white/15 px-2.5 py-1.5 rounded border border-white/10 animate-fade-in"
-                                  title="Remove file and return to standard NCERT Digital Edition"
-                                  id="btn_remove_chapter_pdf"
+                                  className="text-red-300 hover:text-red-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer bg-white/10 hover:bg-white/15 px-2.5 py-1.5 rounded"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Reset to Digital Book</span>
+                                  <span>Reset to Standard PDF</span>
                                 </button>
                               </div>
-                            </div>
-                            
-                            {/* container to load and read the user's PDF or Image */}
-                            <div className="flex-1 bg-white relative flex items-center justify-center overflow-auto p-4 min-h-0">
-                              {chapterPdfs[selectedChapter.id].type?.startsWith('image/') ? (
-                                <img 
-                                  src={chapterPdfs[selectedChapter.id].url} 
-                                  alt={chapterPdfs[selectedChapter.id].name}
-                                  className="max-w-full max-h-full object-contain rounded-lg border border-card-border shadow-xs animate-fade-in"
-                                />
-                              ) : (
-                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in">
-                                  <div className="relative mb-4">
-                                    <div className="w-16 h-20 bg-red-500 rounded-lg shadow-md flex flex-col justify-between p-2.5 text-white relative transform hover:scale-105 hover:rotate-1 transition-all duration-300">
-                                      <div className="text-[9px] font-black tracking-widest font-mono">PDF</div>
-                                      <BookOpen className="w-8 h-8 mx-auto my-1 text-white/90 animate-pulse" />
-                                      <div className="text-[7px] font-mono text-center font-extrabold truncate">
-                                        {chapterPdfs[selectedChapter.id].name}
-                                      </div>
-                                    </div>
-                                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border border-white shadow-3xs animate-bounce">
-                                      <CheckCircle className="w-3.5 h-3.5" />
-                                    </div>
-                                  </div>
 
-                                  <h3 className="text-xs font-black text-primary font-mono uppercase tracking-wider mb-1">
-                                    PDF Loaded Successfully
-                                  </h3>
-                                  <p className="text-[11px] text-charcoal/60 max-w-sm mb-4 leading-normal">
-                                    Chrome security blocks direct PDF rendering inside double-nested secure preview panels. Click below to view the PDF in a new browser tab, or ask your AI Tutor doubts immediately!
-                                  </p>
-
-                                  <div className="flex flex-col sm:flex-row gap-2.5 w-full max-w-xs justify-center">
+                              <div className="flex-1 bg-white relative flex items-center justify-center overflow-auto p-4 min-h-0">
+                                {chapterPdfs[selectedChapter.id].type?.startsWith('image/') ? (
+                                  <img 
+                                    src={chapterPdfs[selectedChapter.id].url} 
+                                    alt={chapterPdfs[selectedChapter.id].name}
+                                    className="max-w-full max-h-full object-contain rounded-lg border border-slate-200 shadow-xs"
+                                  />
+                                ) : (
+                                  <div className="text-center space-y-3">
+                                    <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+                                    <h4 className="text-xs font-bold text-slate-800">PDF Loaded Successfully</h4>
                                     <a
                                       href={chapterPdfs[selectedChapter.id].url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="bg-primary hover:bg-primary-light text-white text-[11px] font-extrabold px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 border border-primary-light shadow-2xs transition-all hover:-translate-y-0.5 cursor-pointer"
+                                      className="inline-block bg-[#0a192f] text-white text-xs font-bold px-4 py-2 rounded-xl"
                                     >
-                                      <ExternalLink className="w-4 h-4 text-secondary" />
-                                      <span>Open PDF in New Tab</span>
+                                      Open PDF in New Window
                                     </a>
-
-                                    <button
-                                      onClick={() => {
-                                        const fileObj = chapterPdfs[selectedChapter.id];
-                                        onAskAI(selectedChapter.title, undefined, {
-                                          name: fileObj.name,
-                                          mimeType: fileObj.type || 'application/pdf',
-                                          base64: fileObj.base64 || ''
-                                        });
-                                      }}
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 border border-emerald-700 shadow-2xs transition-all hover:-translate-y-0.5 cursor-pointer"
-                                    >
-                                      <Sparkles className="w-4 h-4 animate-pulse" />
-                                      <span>Ask AI Tutor</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          /* Otherwise, render the integrated Drag & Drop uploader and beautiful Digital Book simulator */
-                          <div className="space-y-5">
-                            
-                            {/* OFFICIAL NCERT CHAPTER BOOK BANNER WITH PICTORIAL COVER & DIRECT PDF LINK */}
-                            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-5 shadow-3xs flex flex-col sm:flex-row items-center gap-5 animate-fade-in">
-                              
-                              {/* Pictorial Cover Icon */}
-                              <div className="relative shrink-0 w-24 h-32 bg-gradient-to-br from-primary to-secondary rounded-xl shadow-md overflow-hidden flex flex-col justify-between p-2.5 text-white select-none transform hover:rotate-2 transition-all duration-300">
-                                <div className="absolute inset-0 bg-white/5 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:10px_10px] opacity-15" />
-                                <div className="flex justify-between items-center text-[7px] font-mono tracking-widest uppercase opacity-75">
-                                  <span>NCERT</span>
-                                  <span>XI</span>
-                                </div>
-                                <div className="my-auto text-center space-y-0.5">
-                                  <div className="text-[18px] font-black font-serif tracking-tighter leading-none">
-                                    {selectedChapter.number}
-                                  </div>
-                                  <div className="text-[8px] font-black uppercase tracking-wider font-mono line-clamp-2 px-1 leading-tight text-white/90">
-                                    {selectedChapter.title}
-                                  </div>
-                                </div>
-                                <div className="border-t border-white/20 pt-1 flex justify-between items-center text-[6px] font-mono tracking-widest uppercase font-extrabold">
-                                  <span>{subject}</span>
-                                  <BookOpen className="w-2 h-2 text-secondary animate-pulse" />
-                                </div>
-                              </div>
-
-                              {/* Description & Action Button */}
-                              <div className="flex-1 text-center sm:text-left space-y-2.5">
-                                <div className="space-y-0.5">
-                                  <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                    <Layers className="w-3 h-3 text-[#fe6a34]" />
-                                    <span>NCERT Official Study Material</span>
-                                  </div>
-                                  <h3 className="text-xs sm:text-sm font-black text-primary leading-tight mt-1">
-                                    Chapter {selectedChapter.number}: {selectedChapter.title}
-                                  </h3>
-                                  <p className="text-[11px] text-charcoal/60 leading-normal max-w-xl">
-                                    Access the complete, official high-quality NCERT chapter content with illustrations, exercises, and theoretical proofs.
-                                  </p>
-                                </div>
-
-                                {selectedChapter.pdfUrl && (
-                                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                                    <a
-                                      href={selectedChapter.pdfUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 bg-[#fe6a34] hover:bg-[#fe6a34]/95 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2.5 rounded-lg shadow-3xs hover:shadow-2xs transition-all transform hover:-translate-y-0.5 duration-200 cursor-pointer"
-                                      id={`btn_complete_pdf_${selectedChapter.id}`}
-                                    >
-                                      <BookOpen className="w-3.5 h-3.5 text-white" />
-                                      <span>For complete Pdf</span>
-                                    </a>
-                                    <span className="text-[10px] text-charcoal/40 font-semibold font-mono">
-                                      Opens on ncert24.com • Free Access
-                                    </span>
                                   </div>
                                 )}
                               </div>
                             </div>
-                            
-                            {/* Drag & Drop PDF & Image Uploader Widget */}
-                            <div
-                              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                              onDragLeave={() => setIsDragging(false)}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                setIsDragging(false);
-                                const file = e.dataTransfer.files?.[0];
-                                if (file) {
-                                  handleFileSelection(file);
-                                }
-                              }}
-                              className={`border-2 border-dashed rounded-xl p-5 text-center transition-all ${
-                                isDragging 
-                                  ? 'border-[#fe6a34] bg-[#fe6a34]/5 scale-[0.99] shadow-inner' 
-                                  : 'border-card-border bg-surface-container-low/50 hover:border-[#fe6a34]/40'
-                              }`}
-                            >
-                              <div className="max-w-md mx-auto space-y-2">
-                                <div className="w-10 h-10 rounded-full bg-[#fe6a34]/15 flex items-center justify-center mx-auto text-[#fe6a34]">
-                                  <Upload className="w-5 h-5" />
-                                </div>
-                                <div className="space-y-1">
-                                  <h4 className="text-xs font-black text-primary uppercase font-mono tracking-wider">
-                                    Import Chapter PDF or Image (Direct Viewer)
-                                  </h4>
-                                  <p className="text-[11px] text-charcoal/50 leading-normal">
-                                    Drag and drop your NCERT PDF chapter, study book, or handwritten notes / diagrams images here. We will load your files directly and allow you to ask doubts with the AI Tutor!
-                                  </p>
-                                </div>
-                                
-                                <label className="inline-flex items-center gap-1.5 bg-[#fe6a34] hover:bg-[#fe6a34]/95 text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-lg shadow-3xs cursor-pointer transition-all mt-1">
-                                  <FileText className="w-3.5 h-3.5" />
-                                  <span>Select Chapter PDF or Image</span>
-                                  <input 
-                                    type="file" 
-                                    accept="application/pdf,image/*" 
-                                    className="hidden" 
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        handleFileSelection(file);
-                                      }
-                                    }}
-                                  />
-                                </label>
+                          ) : (
+                            <div className="border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 text-center space-y-3">
+                              <Upload className="w-8 h-8 text-slate-400 mx-auto" />
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-800">Import Custom Chapter PDF or Image</h4>
+                                <p className="text-[11px] text-slate-500">Drag and drop your chapter file here to study with AI Tutor</p>
                               </div>
+                              <label className="inline-flex items-center gap-1.5 bg-[#0a192f] text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer shadow-3xs">
+                                <span>Select PDF / Image</span>
+                                <input 
+                                  type="file" 
+                                  accept="application/pdf,image/*" 
+                                  className="hidden" 
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleFileSelection(file);
+                                  }}
+                                />
+                              </label>
                             </div>
-
-
-
-                          </div>
-                        )}
-
-                      </div>
-                    )}
-
-                    {/* NOTES TAB */}
-                    {activeTab === 'notes' && details && (
-                      <div className="space-y-3.5">
-                        <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-secondary">
-                          Syllabus Review & Summary Notes
-                        </h4>
-                        <div className="space-y-3">
-                          {details.shortNotes.map((note, idx) => (
-                            <div key={idx} className="flex gap-3 bg-surface-container-low border border-card-border p-3.5 rounded-lg">
-                              <div className="w-5 h-5 bg-primary/10 rounded-full flex items-center justify-center shrink-0 text-primary font-mono text-[10px] font-bold">
-                                {idx + 1}
-                              </div>
-                              <p className="text-xs text-primary leading-relaxed" dangerouslySetInnerHTML={{ 
-                                __html: note.replace(/\*\*(.*?)\*\*/g, '<strong class="text-secondary font-black">$1</strong>') 
-                              }} />
-                            </div>
-                          ))}
+                          )}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* FORMULA TAB */}
-                    {activeTab === 'formulas' && details && (
-                      <div className="space-y-3.5">
-                        <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-secondary">
-                          Important Formula Sheet
-                        </h4>
-                        <div className="grid grid-cols-1 gap-2.5">
-                          {details.formulas.map((form, idx) => (
-                            <div key={idx} className="border border-card-border rounded-lg bg-[#fafafa] p-3 flex items-center gap-3">
-                              <span className="text-[10px] font-mono font-bold bg-[#efebe9] text-primary px-2 py-0.5 rounded border border-card-border/50 shrink-0">
-                                EQ {idx + 1}
-                              </span>
-                              <p className="text-xs font-mono font-extrabold text-primary bg-white/80 p-2 border border-card-border/30 rounded flex-1">
-                                {form}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* KEY CONCEPTS TAB */}
-                    {activeTab === 'concepts' && details && (
-                      <div className="space-y-3.5">
-                        <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-secondary">
-                          Key Academic Concepts
-                        </h4>
-                        <div className="space-y-3">
-                          {details.keyConcepts.map((concept, idx) => (
-                            <div key={idx} className="border border-card-border rounded-lg p-3.5 bg-white shadow-3xs hover:border-primary/40 transition-all">
-                              <h5 className="text-xs font-extrabold text-primary flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 bg-secondary rounded-full" />
-                                <span>{concept.title}</span>
-                              </h5>
-                              <p className="text-xs text-charcoal/60 mt-1 leading-relaxed pl-3">
-                                {concept.description}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* DIAGRAMS TAB */}
-                    {activeTab === 'diagrams' && details && (
-                      <div className="space-y-4">
-                        <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-secondary">
-                          Important Curriculum Diagrams
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {details.diagrams.map((diag, idx) => (
-                            <div key={idx} className="border border-card-border rounded-xl p-3 bg-surface-container-low shadow-3xs flex flex-col justify-between">
-                              <div className="space-y-1.5">
-                                <div className="border border-card-border bg-white rounded-lg aspect-video flex items-center justify-center p-3 relative overflow-hidden">
-                                  {/* Schematic grid background */}
-                                  <div className="absolute inset-0 bg-[radial-gradient(#e0e0e0_0.7px,transparent_0.7px)] [background-size:10px_10px] opacity-60" />
-                                  <div className="relative text-center p-2">
-                                    <span className="text-[9px] font-mono font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded">CBSE SCHEMATIC {idx + 1}</span>
-                                    <p className="text-xs font-extrabold text-primary mt-2">{diag.title}</p>
-                                  </div>
-                                </div>
-                                <h5 className="text-xs font-extrabold text-primary mt-1.5">{diag.title}</h5>
-                                <p className="text-[11px] text-charcoal/50 leading-normal line-clamp-3">
-                                  {diag.description}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* OBJECTIVES TAB */}
-                    {activeTab === 'objectives' && details && (
-                      <div className="space-y-3.5">
-                        <h4 className="text-xs font-extrabold font-mono uppercase tracking-wider text-secondary">
-                          Learning Objectives
-                        </h4>
-                        <div className="space-y-2.5">
-                          {details.learningObjectives.map((obj, idx) => (
-                            <div key={idx} className="flex gap-2 items-start text-xs font-bold text-primary">
-                              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                              <span className="leading-relaxed">{obj}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-              </div>
-
-              {/* FOOTER ACTIONS BAR */}
-              <div className="border-t border-card-border bg-surface-container-lowest p-4 flex flex-col sm:flex-row gap-3 justify-between items-center shrink-0">
-                <div className="text-center sm:text-left">
-                  <span className="block text-[9px] font-mono font-bold text-charcoal/40 uppercase tracking-widest">
-                    Ready to enter interactive zone?
-                  </span>
-                  <span className="block text-[11px] font-extrabold text-primary line-clamp-1 flex items-center justify-center sm:justify-start gap-1">
-                    {completedChapters.includes(selectedChapter.id) && (
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-500 fill-emerald-100 shrink-0" />
-                    )}
-                    <span>{selectedChapter.title}</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 justify-center w-full sm:w-auto">
-                  {/* MARK AS COMPLETE */}
-                  <button
-                    onClick={() => toggleChapterCompletion(selectedChapter.id)}
-                    className={`flex-1 sm:flex-initial text-xs font-extrabold px-4 py-2.5 rounded-lg transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer border ${
-                      completedChapters.includes(selectedChapter.id)
-                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-                    }`}
-                    id={`btn_complete_chapter_${selectedChapter.id}`}
-                  >
-                    <CheckCircle className={`w-3.5 h-3.5 ${completedChapters.includes(selectedChapter.id) ? 'text-emerald-700 fill-emerald-100' : 'text-white'}`} />
-                    <span>{completedChapters.includes(selectedChapter.id) ? 'Completed ✓' : 'Mark as Complete'}</span>
-                  </button>
-
-                  {/* EXPLORE IN 3D */}
-                  <button
-                    onClick={() => onExploreIn3D(selectedChapter.title, details?.nodes3D || ['Concept'])}
-                    className="flex-1 sm:flex-initial bg-primary hover:bg-primary-light text-white text-xs font-extrabold px-4 py-2.5 rounded-lg transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    id="btn_explore_3d_chapter"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-white text-white" />
-                    <span>Explore in 3D</span>
-                  </button>
-
-                  {/* ASK AI */}
-                  <button
-                    onClick={() => onAskAI(selectedChapter.title)}
-                    className="flex-1 sm:flex-initial bg-white hover:bg-surface-container text-primary border border-card-border text-xs font-extrabold px-4 py-2.5 rounded-lg transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    id="btn_ask_ai_chapter"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-secondary" />
-                    <span>Ask AI</span>
-                  </button>
-
-                  {/* PRACTICE QUIZ */}
-                  <button
-                    onClick={handleStartQuiz}
-                    className="flex-1 sm:flex-initial bg-[#10b981] hover:bg-emerald-600 text-white text-xs font-extrabold px-4 py-2.5 rounded-lg transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    id="btn_practice_quiz_chapter"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span>Practice Quiz</span>
-                  </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
             </div>
 
+            {/* ==================== RIGHT COLUMN: AR INTERACTIVITY & SIDEBAR (4 cols) ==================== */}
+            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
+              
+              {/* 3. AR INTERACTIVITY CARD (MATCHING REFERENCE IMAGE) */}
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                {/* Dark Navy Header */}
+                <div className="bg-[#0a192f] text-white p-5 space-y-1">
+                  <h3 className="text-lg font-bold tracking-tight">AR Interactivity</h3>
+                  <p className="text-xs text-slate-300 font-medium">
+                    Experience the {subject.toLowerCase()} in real-time
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="p-4 space-y-3">
+                  {/* EXPLORE IN 3D HERO BUTTON */}
+                  <button
+                    onClick={() => onExploreIn3D(selectedChapter.title, details?.nodes3D || ['Concept'])}
+                    className="w-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 text-white rounded-2xl p-5 text-center flex flex-col items-center justify-center space-y-1 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer"
+                    id="btn_explore_3d_chapter"
+                  >
+                    <div className="p-2 bg-white/20 rounded-xl backdrop-blur-xs mb-1">
+                      <Compass className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-base font-extrabold tracking-wide">Explore in 3D</span>
+                    <span className="text-[9px] font-mono tracking-widest text-white/90 uppercase font-extrabold">
+                      AUGMENTED REALITY ENABLED
+                    </span>
+                  </button>
+
+                  {/* ASK AI TUTOR BUTTON */}
+                  <button
+                    onClick={() => onAskAI(selectedChapter.title)}
+                    className="w-full bg-slate-100 hover:bg-slate-200/80 text-slate-800 font-bold p-3.5 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-3xs cursor-pointer transition-all"
+                    id="btn_ask_ai_chapter"
+                  >
+                    <Brain className="w-4 h-4 text-slate-600" />
+                    <span>Ask AI Tutor</span>
+                  </button>
+
+                  {/* PRACTICE QUIZ BUTTON */}
+                  <button
+                    onClick={handleStartQuiz}
+                    className="w-full bg-slate-100 hover:bg-slate-200/80 text-slate-800 font-bold p-3.5 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-3xs cursor-pointer transition-all"
+                    id="btn_practice_quiz_chapter"
+                  >
+                    <HelpCircle className="w-4 h-4 text-slate-600" />
+                    <span>Practice Quiz</span>
+                  </button>
+
+                  {/* MARK AS COMPLETE BUTTON */}
+                  <button
+                    onClick={() => toggleChapterCompletion(selectedChapter.id)}
+                    className={`w-full font-bold p-3.5 rounded-2xl flex items-center justify-center gap-2 text-xs shadow-md cursor-pointer transition-all ${
+                      completedChapters.includes(selectedChapter.id)
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-[#0a192f] hover:bg-[#112240] text-white'
+                    }`}
+                    id={`btn_complete_chapter_${selectedChapter.id}`}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>{completedChapters.includes(selectedChapter.id) ? 'Marked as Complete ✓' : 'Mark as Complete'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 6. CHAPTER PROGRESS CARD (MATCHING REFERENCE IMAGE) */}
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-bold">
+                  <span className="uppercase tracking-wider font-mono text-[10px]">CHAPTER PROGRESS</span>
+                  <span>{completedCount} / {chapters.length} Lessons</span>
+                </div>
+
+                <div className="text-2xl font-black text-slate-900 font-mono">
+                  {completionPercent}%
+                </div>
+
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-orange-500 h-full transition-all duration-500 rounded-full"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* 7. UP NEXT CARD (MATCHING REFERENCE IMAGE) */}
+              {(() => {
+                const nextChapter = chapters.find(c => c.number === selectedChapter.number + 1);
+                if (!nextChapter) return null;
+
+                return (
+                  <div className="bg-slate-100/70 rounded-2xl p-4 border border-slate-200/60 space-y-3">
+                    <h4 className="text-sm font-bold text-slate-800">Up Next</h4>
+
+                    <div
+                      onClick={() => {
+                        setSelectedChapter(nextChapter);
+                        setActiveTab('notes');
+                        setQuizState(null);
+                        setSimulatedPage(1);
+                      }}
+                      className="bg-white rounded-xl p-3 border border-slate-200 flex items-center gap-3 cursor-pointer shadow-xs hover:shadow-sm transition-all"
+                      id="btn_open_next_chapter"
+                    >
+                      <div className="w-10 h-12 bg-slate-100 rounded-lg border border-slate-200 shrink-0 overflow-hidden relative">
+                        {renderChapterGraphic(subject, nextChapter.number, classLevel)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="text-xs font-bold text-slate-900 truncate">
+                          {nextChapter.number}. {nextChapter.title}
+                        </h5>
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          {details?.readTimeMins || 20} mins • Medium
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+      {videoViewer && (
+        <div className="fixed inset-0 bg-primary/95 backdrop-blur-md z-50 flex flex-col justify-between p-4 sm:p-6 animate-fade-in font-sans">
+          {/* Top Control Bar */}
+          <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400 border border-red-500/30 shrink-0">
+                <Play className="w-5 h-5 fill-red-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-widest bg-red-950/80 border border-red-500/30 px-2 py-0.5 rounded">
+                    Animated Educational Video Lesson
+                  </span>
+                  <span className="text-[10px] font-bold text-white/60">
+                    {subject} • Class {classLevel}
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight mt-0.5">
+                  {videoViewer.title}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://www.youtube.com/watch?v=${videoViewer.embedId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md"
+                id="btn_open_external_youtube"
+              >
+                <span>Watch on YouTube ↗</span>
+              </a>
+
+              <button
+                onClick={() => setVideoViewer(null)}
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                id="btn_close_video_modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Responsive YouTube Embed Container */}
+          <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col items-center justify-center py-4">
+            <div className="w-full aspect-video max-h-[72vh] rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-black relative">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoViewer.embedId}?autoplay=1&rel=0`}
+                title={videoViewer.title}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+
+          {/* Bottom Control Bar */}
+          <div className="max-w-6xl mx-auto w-full flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 shrink-0">
+            <div className="text-xs text-white/70">
+              <span className="text-white font-bold">{videoViewer.title}</span> • Official YouTube Embedded Player
+            </div>
+            
+            <div className="flex flex-wrap gap-2.5">
+              {videoViewer.nodes3D && videoViewer.nodes3D.length > 0 && (
+                <button
+                  onClick={() => {
+                    const title = videoViewer.title;
+                    const nodes = videoViewer.nodes3D!;
+                    setVideoViewer(null);
+                    onExploreIn3D(title, nodes);
+                  }}
+                  className="bg-primary-light hover:bg-primary-light/80 border border-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+                  id="btn_switch_to_3d_from_video"
+                >
+                  <Compass className="w-4 h-4 text-secondary" />
+                  <span>Launch 3D Model Explorer</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  const title = videoViewer.title;
+                  setVideoViewer(null);
+                  onAskAI(title);
+                }}
+                className="bg-secondary hover:bg-secondary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+                id="btn_ask_ai_from_video"
+              >
+                <Sparkles className="w-4 h-4 text-white" />
+                <span>Ask AI Tutor About Video</span>
+              </button>
+
+              <button
+                onClick={() => setVideoViewer(null)}
+                className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-all"
+              >
+                Close Viewer
+              </button>
+            </div>
           </div>
         </div>
       )}

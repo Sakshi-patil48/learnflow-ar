@@ -1,4 +1,5 @@
 import { ClassLevel, SubjectName } from './types';
+import { NCERT_BOOKS } from './ncertData';
 
 export interface ChapterDetails {
   id: string;
@@ -11,6 +12,7 @@ export interface ChapterDetails {
   diagrams: { title: string; description: string; imageUrl?: string }[];
   learningObjectives: string[];
   nodes3D: string[]; // These nodes will load into the 3D view
+  youtubeVideoUrl?: string;
   quiz: {
     question: string;
     options: string[];
@@ -20,6 +22,55 @@ export interface ChapterDetails {
 }
 
 const SPECIFIC_CHAPTERS: Record<string, ChapterDetails> = {
+  // Class 11 -> Biology -> Chapter 1: The Living World
+  'c11_bio_1': {
+    id: 'c11_bio_1',
+    title: 'The Living World',
+    difficultyStars: 4,
+    readTimeMins: 12,
+    youtubeVideoUrl: 'https://www.youtube.com/watch?v=sTZzt4INjTA',
+    shortNotes: [
+      'Biology is the science of life forms and living processes.',
+      'Growth, reproduction, ability to sense environment and mount a suitable response are key characteristics of living organisms.',
+      'Metabolism, cellular organization, and consciousness are defining properties of living beings without exception.',
+      'Biodiversity refers to the number and types of organisms present on Earth (1.7-1.8 million species described).',
+      'Nomenclature: Standardizing the naming of living organisms so that a particular organism is known by the same name globally.'
+    ],
+    formulas: [
+      'Binomial Nomenclature Format: Generic name (Capitalized) + Specific epithet (Lowercase)',
+      'Taxonomic Hierarchy: Kingdom > Phylum/Division > Class > Order > Family > Genus > Species'
+    ],
+    keyConcepts: [
+      { title: 'Defining Properties of Life', description: 'Metabolism, cellular organization, and consciousness are defining features without exception.' },
+      { title: 'Binomial Nomenclature', description: 'Proposed by Carolus Linnaeus. Each scientific name consists of two components: Genus and Species.' },
+      { title: 'Taxonomic Categories', description: 'Hierarchical arrangement of taxa from species (lowest) to kingdom (highest).' },
+      { title: 'Taxonomical Aids', description: 'Herbaria, Botanical Gardens, Museums, Zoological Parks, and Keys used for identification.' }
+    ],
+    diagrams: [
+      { title: 'Taxonomic Hierarchy Tree', description: 'Hierarchy showing Kingdom, Phylum, Class, Order, Family, Genus, Species.' },
+      { title: 'Herbarium Sheet Standard Layout', description: 'Standard size 29 x 41.5 cm sheet with label bearing date, place, and botanical names.' }
+    ],
+    learningObjectives: [
+      'Understand defining characteristics versus general growth characteristics of life.',
+      'Master rules of Binomial Nomenclature.',
+      'Categorize organisms into appropriate taxonomic ranks.'
+    ],
+    nodes3D: ['Taxonomic Hierarchy', 'Cellular Metabolism', 'Binomial Nomenclature', 'Herbaria & Taxonomy'],
+    quiz: [
+      {
+        question: "Which of the following is a defining feature of living organisms?",
+        options: ["Growth", "Reproduction", "Metabolism", "Movement"],
+        answerIndex: 2,
+        explanation: "Metabolism is a defining feature because no non-living object exhibits metabolism, and it occurs in all living organisms."
+      },
+      {
+        question: "Who introduced the system of Binomial Nomenclature?",
+        options: ["Aristotle", "Carolus Linnaeus", "Charles Darwin", "Gregor Mendel"],
+        answerIndex: 1,
+        explanation: "Carolus Linnaeus established Binomial Nomenclature in 1753."
+      }
+    ]
+  },
   // Class 10 -> Chemistry -> Chapter 1: Chemical Reactions and Equations
   'c10_chem_1': {
     id: 'c10_chem_1',
@@ -334,8 +385,27 @@ const SPECIFIC_CHAPTERS: Record<string, ChapterDetails> = {
 
 // Generates dynamic but educational NCERT data for other chapters to ensure no blank pages!
 export function getChapterDetails(chapterId: string, chapterTitle: string, subject: SubjectName): ChapterDetails {
+  // Centralized YouTube video lookup across NCERT_BOOKS
+  let foundVideoUrl: string | undefined = undefined;
+  for (const grade of ['11th', '12th'] as const) {
+    for (const sub of ['Biology', 'Physics', 'Chemistry', 'Mathematics'] as const) {
+      const book = NCERT_BOOKS[grade]?.[sub];
+      if (book) {
+        const found = book.chapters.find(c => c.id === chapterId);
+        if (found?.youtubeVideoUrl) {
+          foundVideoUrl = found.youtubeVideoUrl;
+          break;
+        }
+      }
+    }
+    if (foundVideoUrl) break;
+  }
+
   if (SPECIFIC_CHAPTERS[chapterId]) {
-    return SPECIFIC_CHAPTERS[chapterId];
+    return {
+      ...SPECIFIC_CHAPTERS[chapterId],
+      youtubeVideoUrl: SPECIFIC_CHAPTERS[chapterId].youtubeVideoUrl || foundVideoUrl
+    };
   }
 
   // Fallback generator
@@ -378,7 +448,6 @@ export function getChapterDetails(chapterId: string, chapterTitle: string, subje
     `Solve sample assessment challenges with absolute accuracy.`
   ];
 
-  // Derive nice 3D concepts
   const words = chapterTitle.split(' ');
   const coreNoun = words[0] || 'Concept';
   const nodes3D = [coreNoun, 'Structure', 'Types/Classes', 'Force/Interaction', 'System Balance', 'CBSE Application'];
@@ -427,6 +496,7 @@ export function getChapterDetails(chapterId: string, chapterTitle: string, subje
     diagrams,
     learningObjectives,
     nodes3D,
+    youtubeVideoUrl: foundVideoUrl,
     quiz
   };
 }

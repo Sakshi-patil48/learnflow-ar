@@ -6,6 +6,14 @@ export interface NcertChapter {
   title: string;
   topics: string[];
   pdfUrl?: string;
+  youtubeVideoUrl?: string;
+}
+
+export function extractYouTubeId(url?: string): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2] && match[2].length === 11) ? match[2] : null;
 }
 
 export interface NcertBook {
@@ -25,7 +33,8 @@ export const NCERT_BOOKS: Record<ClassLevel, Record<SubjectName, NcertBook>> = {
           number: 1,
           title: 'The Living World',
           topics: ['What is Living?', 'Diversity in Living World', 'Taxonomic Categories', 'Taxonomical Aids'],
-          pdfUrl: 'https://ncert24.com/ncert-books/ncert-books-class-11-biology-chapter-1'
+          pdfUrl: 'https://ncert24.com/ncert-books/ncert-books-class-11-biology-chapter-1',
+          youtubeVideoUrl: 'https://www.youtube.com/watch?v=sTZzt4INjTA'
         },
         {
           id: 'c11_bio_2',
