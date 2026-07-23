@@ -40,7 +40,7 @@ LearnFlow AR is an AI-powered educational platform that transforms traditional t
 ## 📸 Screenshots
 
 ### Landing Page
-![Landing](screenshots/landing.png)
+![Landing](screenshots/landingpage.jpeg)
 
 ### Dashboard
 ![Dashboard](screenshots/dashboard.png)
