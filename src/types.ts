@@ -34,3 +34,29 @@ export interface ChatMessage {
   tasksToImport?: Array<{ title: string; description: string }>;
   attachedFile?: { name: string; mimeType: string };
 }
+
+export interface StudentUser {
+  id: string;
+  name: string;
+  email: string;
+  classLevel: ClassLevel;
+  registeredAt: string;
+  totalStudyTimeSeconds: number;
+  completedTasksCount: number;
+  masteredModelsCount: number;
+  targetExam?: string;
+  status: 'active' | 'suspended';
+}
+
+export interface AdminSettings {
+  systemPrompt: string;
+  geminiModel: string;
+  temperature: number;
+  maxTokens: number;
+  adminPin: string;
+  enableAiTutor: boolean;
+  enableArScanner: boolean;
+  enableGuestRegistration: boolean;
+  targetExamsList: string[];
+}
+

@@ -1,77 +1,20 @@
-# 🚀 LearnFlow AR
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-LearnFlow AR is an AI-powered educational platform that transforms traditional textbook learning into interactive 3D and AI-assisted experiences. Built with modern web technologies, it combines Google Gemini AI, immersive concepts, and a responsive interface to make learning more engaging, intuitive, and effective.
+# Run and deploy your AI Studio app
 
----
+This contains everything you need to run your app locally.
 
-## ✨ Features
+View your app in AI Studio: https://ai.studio/apps/91c93246-c8b7-4fbb-a707-216d57ddd8a2
 
-- AI-powered learning assistant
-- Interactive 3D visualization
-- Textbook scanning
-- Smart chapter explanations
-- Responsive UI
-- Fast performance
-- Modular architecture
-- Future-ready design
+## Run Locally
 
----
-
-## 🛠 Tech Stack
-
-### Frontend
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-
-### Backend
-- Firebase
-
-### AI
-- Google Gemini API
-
-### Tools
-- VS Code
-- GitHub
-
----
-
-## 📸 Screenshots
-
-### Landing Page
-![Landing](screenshots/landingpage.jpeg)
-
-### Dashboard
-![Dashboard](screenshots/dashboard.jpeg)
+**Prerequisites:**  Node.js
 
 
-### Interface
-![3D Learning](screenshots/interface.jpeg)
-
----
-
-
-## 🤝 Contributing
-
-Contributions are welcome! If you would like to improve LearnFlow AR, feel free to fork the repository and submit a pull request.
-
----
-
-## 👩‍💻 Developer
-
-Created by Sakshi Patil
-
-B.Tech Computer Science Engineering Student
-
-Interested in:
-- Artificial Intelligence
-- Full Stack Development
-- UI/UX Design
-- Educational Technology
-
----
-
-## 📄 License
-
-MIT License
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

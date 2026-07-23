@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { NcertChapter } from '../ncertData';
 import { ClassLevel, SubjectName } from '../types';
+import PDFExporter from './PDFExporter';
+import VoiceAssistant from './VoiceAssistant';
 
 interface Textbook2DReaderProps {
   chapter: NcertChapter;
@@ -129,6 +131,12 @@ export default function Textbook2DReader({ chapter, subject, classLevel, onClose
           </div>
 
           <div className="flex items-center gap-3">
+            <PDFExporter
+              chapter={chapter}
+              subject={subject}
+              classLevel={classLevel}
+            />
+            <VoiceAssistant textToSpeak={`Class ${classLevel} ${subject}. Chapter ${chapter.number}: ${chapter.title}. Key topics include ${chapter.topics.join(', ')}.`} />
             <button
               onClick={() => setIsBookmarked(!isBookmarked)}
               className={`p-1.5 rounded-lg transition-all ${isBookmarked ? 'bg-secondary text-white' : 'hover:bg-white/10 text-white/70'}`}

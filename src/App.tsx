@@ -555,6 +555,8 @@ export default function App() {
           classLevel={classLevel}
           onLogout={handleLogout}
           tasks={tasks}
+          onSaveTasks={saveTasks}
+          onSaveModels={saveModels}
           onAddTask={handleAddTask}
           onImportChapterPlanner={handleImportChapterPlanner}
           onToggleTask={handleToggleTask}

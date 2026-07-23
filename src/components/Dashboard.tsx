@@ -21,9 +21,14 @@ import {
   BookMarked,
   Plus,
   Trash2,
-  RotateCcw,
+  RotateCcw, 
   X,
-  List
+  List,
+  ShieldCheck,
+  Brain,
+  Layers,
+  Trophy,
+  Flame
 } from 'lucide-react';
 import { ClassLevel, SubjectName, StudyTask, Model3D, ChatMessage } from '../types';
 import { NCERT_BOOKS, NcertChapter, NcertBook } from '../ncertData';
@@ -33,6 +38,10 @@ import ScanLearn from './ScanLearn';
 import AITutor from './AITutor';
 import Textbook2DReader from './Textbook2DReader';
 import Bookshelf from './Bookshelf';
+import AdminPanel from './AdminPanel';
+import AIQuizGenerator from './AIQuizGenerator';
+import AIFlashcards from './AIFlashcards';
+import Leaderboard from './Leaderboard';
 
 interface DashboardProps {
   userName: string;
@@ -40,6 +49,8 @@ interface DashboardProps {
   classLevel: ClassLevel;
   onLogout: () => void;
   tasks: StudyTask[];
+  onSaveTasks?: (newTasks: StudyTask[]) => void;
+  onSaveModels?: (newModels: Model3D[]) => void;
   onAddTask: (title: string, description: string, type: StudyTask['type'], subjectOverride?: SubjectName, classOverride?: ClassLevel) => void;
   onImportChapterPlanner?: (
     chapterTitle: string,
@@ -74,6 +85,8 @@ export default function Dashboard({
   classLevel,
   onLogout,
   tasks,
+  onSaveTasks,
+  onSaveModels,
   onAddTask,
   onImportChapterPlanner,
   onToggleTask,
@@ -89,7 +102,13 @@ export default function Dashboard({
   onClearChat,
   onRegenerateResponse,
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'library' | 'scan' | 'tutor' | 'planner' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'library' | 'scan' | 'tutor' | 'planner' | 'settings' | 'admin' | 'quiz' | 'flashcards' | 'leaderboard'>('overview');
+  
+  // Calculate dynamic XP and Level
+  const totalCompletedTasks = tasks.filter(t => t.completed).length;
+  const totalMasteredModels = models.filter(m => m.mastered).length;
+  const userXP = 120 + (totalCompletedTasks * 50) + (totalMasteredModels * 75) + Math.floor((totalStudyTime / 600) * 30);
+  const userLevel = Math.floor(userXP / 200) + 1;
   const [selectedSubject, setSelectedSubject] = useState<SubjectName | null>(null);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -547,6 +566,54 @@ export default function Dashboard({
             </button>
 
             <button
+              onClick={() => {
+                if (!selectedSubject) handleSelectSubject('Biology');
+                setActiveTab('quiz');
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'quiz'
+                  ? 'bg-primary/5 text-primary border-l-4 border-primary pl-2'
+                  : 'text-charcoal/60 hover:bg-surface-container hover:text-primary'
+              }`}
+              id="sidebar_nav_quiz"
+            >
+              <Brain className="w-4 h-4 shrink-0 text-purple-600" />
+              <span>AI Quizzes</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (!selectedSubject) handleSelectSubject('Biology');
+                setActiveTab('flashcards');
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'flashcards'
+                  ? 'bg-primary/5 text-primary border-l-4 border-primary pl-2'
+                  : 'text-charcoal/60 hover:bg-surface-container hover:text-primary'
+              }`}
+              id="sidebar_nav_flashcards"
+            >
+              <Layers className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>Revision Cards</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (!selectedSubject) handleSelectSubject('Biology');
+                setActiveTab('leaderboard');
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'leaderboard'
+                  ? 'bg-primary/5 text-primary border-l-4 border-primary pl-2'
+                  : 'text-charcoal/60 hover:bg-surface-container hover:text-primary'
+              }`}
+              id="sidebar_nav_leaderboard"
+            >
+              <Trophy className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>Leaderboard</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'settings'
@@ -557,6 +624,19 @@ export default function Dashboard({
             >
               <Settings className="w-4 h-4 shrink-0" />
               <span>Settings</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer mt-2 ${
+                activeTab === 'admin'
+                  ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 pl-2 font-bold'
+                  : 'text-indigo-600/80 hover:bg-indigo-50/50 hover:text-indigo-700'
+              }`}
+              id="sidebar_nav_admin"
+            >
+              <ShieldCheck className="w-4 h-4 shrink-0 text-indigo-600" />
+              <span className="font-bold">Admin Console</span>
             </button>
           </div>
         </div>
@@ -630,6 +710,15 @@ export default function Dashboard({
               <GraduationCap className="w-4 h-4" />
               <span>{classLevel}</span>
             </div>
+
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs font-extrabold font-mono hover:bg-amber-500/20 transition-all cursor-pointer shadow-3xs"
+              title="View Leaderboard & Badges"
+            >
+              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>{userXP} XP (Lvl {userLevel})</span>
+            </button>
           </div>
 
         </header>
@@ -638,7 +727,7 @@ export default function Dashboard({
         <div className="flex-1 p-6 md:p-8 overflow-y-auto">
 
           {/* Fallback Screen: Subject NOT Selected Gate */}
-          {!selectedSubject ? (
+          {(!selectedSubject && activeTab !== 'admin' && activeTab !== 'settings' && activeTab !== 'quiz' && activeTab !== 'flashcards' && activeTab !== 'leaderboard') ? (
             <div className="relative rounded-2xl border border-card-border/80 shadow-xl max-w-4xl mx-auto my-6 overflow-hidden bg-white animate-fade-in aspect-[16/9] min-h-[360px] sm:min-h-[440px] md:min-h-[500px] flex items-center justify-center">
               {/* Full Background Image - Contained Aspect Ratio Fit */}
               <img 
@@ -1616,6 +1705,65 @@ export default function Dashboard({
 
                   </div>
                 </div>
+              )}
+
+              {/* TAB 7: AI QUIZ GENERATOR */}
+              {activeTab === 'quiz' && (
+                <AIQuizGenerator
+                  selectedSubject={selectedSubject || 'Biology'}
+                  classLevel={classLevel}
+                  onAskAI={(query) => {
+                    onSendChatMessage(query, selectedSubject || 'Biology', classLevel);
+                    setActiveTab('tutor');
+                  }}
+                />
+              )}
+
+              {/* TAB 8: REVISION FLASHCARDS */}
+              {activeTab === 'flashcards' && (
+                <AIFlashcards
+                  selectedSubject={selectedSubject || 'Biology'}
+                  classLevel={classLevel}
+                  onAskAI={(query) => {
+                    onSendChatMessage(query, selectedSubject || 'Biology', classLevel);
+                    setActiveTab('tutor');
+                  }}
+                />
+              )}
+
+              {/* TAB 9: LEADERBOARD & BADGES */}
+              {activeTab === 'leaderboard' && (
+                <Leaderboard
+                  currentUserName={userName}
+                  currentUserEmail={userEmail}
+                  currentClass={classLevel}
+                  totalXP={userXP}
+                  userLevel={userLevel}
+                  streakDays={1}
+                  completedTasksCount={totalCompletedTasks}
+                  masteredModelsCount={totalMasteredModels}
+                  totalStudyTimeSeconds={totalStudyTime}
+                />
+              )}
+
+              {/* TAB 10: ADMIN CONSOLE */}
+              {activeTab === 'admin' && (
+                <AdminPanel
+                  userName={userName}
+                  userEmail={userEmail}
+                  classLevel={classLevel}
+                  tasks={tasks}
+                  models={models}
+                  totalStudyTime={totalStudyTime}
+                  booksData={booksData}
+                  onSaveBooksData={saveBooksData}
+                  onSaveModels={(newModels) => {
+                    if (onSaveModels) onSaveModels(newModels);
+                  }}
+                  onSaveTasks={(newTasks) => {
+                    if (onSaveTasks) onSaveTasks(newTasks);
+                  }}
+                />
               )}
 
             </div>

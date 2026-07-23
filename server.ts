@@ -4,8 +4,67 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 
 dotenv.config();
+
+// MongoDB Mongoose Schemas
+let isMongoConnected = false;
+
+const StudentSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  classLevel: { type: String, required: true },
+  registeredAt: { type: String, default: () => new Date().toLocaleDateString() },
+  totalStudyTimeSeconds: { type: Number, default: 0 },
+  completedTasksCount: { type: Number, default: 0 },
+  masteredModelsCount: { type: Number, default: 0 },
+  targetExam: { type: String, default: "CBSE Board" },
+  status: { type: String, default: "active" }
+}, { timestamps: true });
+
+const ChapterSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  number: Number,
+  title: String,
+  classLevel: String,
+  subject: String,
+  topics: [String],
+  pdfUrl: String,
+  youtubeVideoUrl: String
+}, { timestamps: true });
+
+const Model3DSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: String,
+  category: String,
+  description: String,
+  nodes: [String],
+  subject: String,
+  classLevel: String,
+  scannedAt: String,
+  mastered: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const StudentModel = mongoose.model("Student", StudentSchema);
+const ChapterModel = mongoose.model("Chapter", ChapterSchema);
+const Model3DItemModel = mongoose.model("Model3DItem", Model3DSchema);
+
+async function connectMongoDB() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.log("No MONGODB_URI provided. Running in memory / local storage mode.");
+    return;
+  }
+  try {
+    await mongoose.connect(uri);
+    isMongoConnected = true;
+    console.log("Successfully connected to MongoDB Atlas (learnflow database).");
+  } catch (err) {
+    console.error("MongoDB Connection Error:", err);
+  }
+}
 
 // Lazy-initialized Gemini client
 let aiClient: GoogleGenAI | null = null;
@@ -40,14 +99,138 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 async function startServer() {
+  await connectMongoDB();
+
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
   // API Health Check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", geminiAvailable: !!process.env.GEMINI_API_KEY });
+    res.json({
+      status: "ok",
+      geminiAvailable: !!process.env.GEMINI_API_KEY,
+      mongoConnected: isMongoConnected
+    });
+  });
+
+  // MongoDB Student Accounts API
+  app.get("/api/students", async (req, res) => {
+    if (!isMongoConnected) {
+      return res.json([]);
+    }
+    try {
+      const students = await StudentModel.find().sort({ createdAt: -1 });
+      res.json(students);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/students", async (req, res) => {
+    if (!isMongoConnected) {
+      return res.json({ status: "skipped_no_mongo", student: req.body });
+    }
+    try {
+      const { id, name, email, classLevel, targetExam } = req.body;
+      const updated = await StudentModel.findOneAndUpdate(
+        { email: email.toLowerCase() },
+        { id: id || `usr_${Date.now()}`, name, email: email.toLowerCase(), classLevel, targetExam },
+        { upsert: true, new: true }
+      );
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/students/stats", async (req, res) => {
+    if (!isMongoConnected) return res.json({ status: "ok" });
+    try {
+      const { email, addStudyTimeSeconds, completedTasksCount, masteredModelsCount } = req.body;
+      const updateObj: any = {};
+      if (addStudyTimeSeconds) updateObj.$inc = { totalStudyTimeSeconds: addStudyTimeSeconds };
+      if (completedTasksCount !== undefined) updateObj.completedTasksCount = completedTasksCount;
+      if (masteredModelsCount !== undefined) updateObj.masteredModelsCount = masteredModelsCount;
+
+      const student = await StudentModel.findOneAndUpdate(
+        { email: email.toLowerCase() },
+        updateObj,
+        { new: true }
+      );
+      res.json(student);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // MongoDB Curriculum Chapters API
+  app.get("/api/curriculum", async (req, res) => {
+    if (!isMongoConnected) return res.json([]);
+    try {
+      const chapters = await ChapterModel.find().sort({ number: 1 });
+      res.json(chapters);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/curriculum/chapter", async (req, res) => {
+    if (!isMongoConnected) return res.json({ status: "skipped_no_mongo" });
+    try {
+      const chapterData = req.body;
+      const updated = await ChapterModel.findOneAndUpdate(
+        { id: chapterData.id },
+        chapterData,
+        { upsert: true, new: true }
+      );
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/curriculum/chapter/:id", async (req, res) => {
+    if (!isMongoConnected) return res.json({ status: "skipped_no_mongo" });
+    try {
+      await ChapterModel.deleteOne({ id: req.params.id });
+      res.json({ status: "deleted" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // MongoDB 3D Models API
+  app.get("/api/models3d", async (req, res) => {
+    if (!isMongoConnected) return res.json([]);
+    try {
+      const models = await Model3DItemModel.find().sort({ createdAt: -1 });
+      res.json(models);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/models3d", async (req, res) => {
+    if (!isMongoConnected) return res.json({ status: "skipped_no_mongo" });
+    try {
+      const modelData = req.body;
+      const created = await Model3DItemModel.create(modelData);
+      res.json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/models3d/:id", async (req, res) => {
+    if (!isMongoConnected) return res.json({ status: "skipped_no_mongo" });
+    try {
+      await Model3DItemModel.deleteOne({ id: req.params.id });
+      res.json({ status: "deleted" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Serve the custom logo file

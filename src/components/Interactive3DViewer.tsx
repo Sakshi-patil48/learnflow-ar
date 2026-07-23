@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { RotateCw, Maximize2, ZoomIn, ZoomOut, CheckCircle2, Award } from 'lucide-react';
+import { 
+  RotateCw, 
+  Maximize2, 
+  ZoomIn, 
+  ZoomOut, 
+  CheckCircle2, 
+  Award, 
+  Camera, 
+  Layers, 
+  Sliders, 
+  Eye, 
+  Download, 
+  Sparkles, 
+  Volume2, 
+  X,
+  Crosshair,
+  RefreshCcw,
+  Zap
+} from 'lucide-react';
+import VoiceAssistant from './VoiceAssistant';
 
 interface Interactive3DViewerProps {
   modelName: string;
@@ -8,6 +27,7 @@ interface Interactive3DViewerProps {
   onMasterModel?: () => void;
   isMastered?: boolean;
   onSelectNode?: (nodeName: string | null) => void;
+  onAskAI?: (prompt: string) => void;
 }
 
 interface Point3D {
@@ -16,6 +36,7 @@ interface Point3D {
   y: number;
   z: number;
   color: string;
+  description?: string;
 }
 
 export default function Interactive3DViewer({
@@ -25,16 +46,26 @@ export default function Interactive3DViewer({
   onMasterModel,
   isMastered = false,
   onSelectNode,
+  onAskAI
 }: Interactive3DViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   
+  // 3D Canvas Transform States
   const [rotation, setRotation] = useState({ x: 0.5, y: 0.6 });
   const [zoom, setZoom] = useState(1.1);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [selectedNode, setSelectedNode] = useState<string | null>(nodes[0] || null);
   const [autoRotate, setAutoRotate] = useState(true);
+
+  // Phase 3 WebXR & AR States
+  const [isCameraAR, setIsCameraAR] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [explosionFactor, setExplosionFactor] = useState(1.0); // 1.0 = Normal, 2.5 = Full Exploded View
+  const [isWireframe, setIsWireframe] = useState(false);
+  const [activeHotspot, setActiveHotspot] = useState<{ name: string; description: string; color: string } | null>(null);
 
   // Sync selectedNode back to parent context
   useEffect(() => {
@@ -61,18 +92,50 @@ export default function Interactive3DViewer({
       const phi = Math.acos(-1 + (2 * index) / Math.max(1, nodes.length - 1));
       const theta = Math.sqrt(nodes.length * Math.PI) * phi;
       
-      const r = 100; // Sphere radius
+      const r = 90; // Base sphere radius
       return {
         name: node,
         x: r * Math.sin(phi) * Math.cos(theta),
         y: r * Math.sin(phi) * Math.sin(theta),
         z: r * Math.cos(phi),
         color: colors[index % colors.length],
+        description: `Key structural node "${node}" involved in ${category.toLowerCase()} spatial alignment and bonding.`
       };
     });
     setPoints(pts);
     setSelectedNode(nodes[0] || null);
-  }, [nodes]);
+    if (pts[0]) {
+      setActiveHotspot({ name: pts[0].name, description: pts[0].description || '', color: pts[0].color });
+    }
+  }, [nodes, category]);
+
+  // WebXR / Real Camera Stream Toggle
+  useEffect(() => {
+    if (isCameraAR) {
+      navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'environment' } })
+        .then((stream) => {
+          setCameraStream(stream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch((err) => {
+          console.error("Camera access failed:", err);
+          alert("Could not access camera for AR view. Please check permissions.");
+          setIsCameraAR(false);
+        });
+    } else {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+    }
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isCameraAR]);
 
   // RequestAnimationFrame for auto rotation
   useEffect(() => {
@@ -90,14 +153,13 @@ export default function Interactive3DViewer({
     return () => cancelAnimationFrame(animId);
   }, [autoRotate, isDragging]);
 
-  // Handle Canvas Drawing
+  // Canvas 3D Rendering Engine
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const width = canvas.width;
@@ -105,39 +167,44 @@ export default function Interactive3DViewer({
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // Drawing background grids/radial glows
-    const gradient = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, Math.max(centerX, centerY));
-    gradient.addColorStop(0, '#001b3d11');
-    gradient.addColorStop(0.5, '#00173605');
-    gradient.addColorStop(1, 'transparent');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-
-    // Grid circles (orbital planes)
-    ctx.strokeStyle = '#00173611';
-    ctx.lineWidth = 1;
-    for (let r = 50; r <= 150; r += 50) {
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, r * zoom, 0, Math.PI * 2);
-      ctx.stroke();
+    // Background Glow (if not in camera AR mode)
+    if (!isCameraAR) {
+      const gradient = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, Math.max(centerX, centerY));
+      gradient.addColorStop(0, '#001b3d15');
+      gradient.addColorStop(0.5, '#00173608');
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
     }
 
-    // Draw central node (The Core Topic)
+    // Grid circles (orbital planes / X-Ray wireframes)
+    ctx.strokeStyle = isWireframe ? '#38bdf888' : '#00173618';
+    ctx.lineWidth = isWireframe ? 1.5 : 1;
+    if (isWireframe) ctx.setLineDash([6, 6]);
+
+    for (let r = 40; r <= 140; r += 40) {
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r * zoom * Math.min(1.5, explosionFactor), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Draw central core node
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 15 * zoom, 0, Math.PI * 2);
-    ctx.fillStyle = '#001736';
+    ctx.arc(centerX, centerY, 16 * zoom, 0, Math.PI * 2);
+    ctx.fillStyle = isCameraAR ? '#001736dd' : '#001736';
     ctx.fill();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#fe6a3444';
+    ctx.strokeStyle = '#fe6a34';
     ctx.stroke();
 
     // Core Label
     ctx.font = 'bold 11px var(--font-mono)';
-    ctx.fillStyle = '#001736';
+    ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText('CORE SYSTEM', centerX, centerY + 4);
+    ctx.fillText('3D CORE', centerX, centerY + 4);
 
-    // Project and Sort points by Depth (z-index after rotation)
+    // 3D Perspective Projection with Exploded View Offset
     const sinX = Math.sin(rotation.x);
     const cosX = Math.cos(rotation.x);
     const sinY = Math.sin(rotation.y);
@@ -154,13 +221,18 @@ export default function Interactive3DViewer({
     }
 
     const projected: ProjectedPoint[] = points.map((p) => {
+      // Apply Explosion Factor to expand points outwards
+      const exX = p.x * explosionFactor;
+      const exY = p.y * explosionFactor;
+      const exZ = p.z * explosionFactor;
+
       // Rotate around Y axis
-      let x1 = p.x * cosY - p.z * sinY;
-      let z1 = p.x * sinY + p.z * cosY;
+      let x1 = exX * cosY - exZ * sinY;
+      let z1 = exX * sinY + exZ * cosY;
 
       // Rotate around X axis
-      let y2 = p.y * cosX - z1 * sinX;
-      let z2 = p.y * sinX + z1 * cosX;
+      let y2 = exY * cosX - z1 * sinX;
+      let z2 = exY * sinX + z1 * cosX;
 
       // 3D perspective projection
       const distance = 300;
@@ -175,7 +247,7 @@ export default function Interactive3DViewer({
         projX,
         projY,
         projZ: z2,
-        radius: Math.max(6, 10 * perspectiveScale * zoom),
+        radius: Math.max(7, 11 * perspectiveScale * zoom),
         originalPoint: p,
       };
     });
@@ -183,35 +255,35 @@ export default function Interactive3DViewer({
     // Sort by depth (draw back items first)
     projected.sort((a, b) => a.projZ - b.projZ);
 
-    // Draw connections (central core to node, and nodes to each other)
+    // Draw connecting vectors (central core to node)
     projected.forEach((p) => {
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
       ctx.lineTo(p.projX, p.projY);
-      ctx.strokeStyle = selectedNode === p.name ? '#fe6a3488' : '#00173622';
-      ctx.lineWidth = selectedNode === p.name ? 2 : 1;
-      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = selectedNode === p.name ? '#fe6a34' : isWireframe ? '#38bdf866' : '#00173633';
+      ctx.lineWidth = selectedNode === p.name ? 2.5 : 1.2;
+      ctx.setLineDash(explosionFactor > 1.2 ? [3, 3] : []);
       ctx.stroke();
       ctx.setLineDash([]);
     });
 
-    // Draw nodes and text labels
+    // Draw Hotspot Nodes & Pins
     projected.forEach((p) => {
       const isSelected = selectedNode === p.name;
 
-      // Node Shadow/Glow
+      // Outer Glow Pulse
       if (isSelected) {
         ctx.beginPath();
-        ctx.arc(p.projX, p.projY, p.radius + 6, 0, Math.PI * 2);
-        ctx.fillStyle = `${p.color}33`;
+        ctx.arc(p.projX, p.projY, p.radius + 8, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.color}44`;
         ctx.fill();
       }
 
       // Outer ring
       ctx.beginPath();
-      ctx.arc(p.projX, p.projY, p.radius + (isSelected ? 2 : 0), 0, Math.PI * 2);
+      ctx.arc(p.projX, p.projY, p.radius + (isSelected ? 3 : 0), 0, Math.PI * 2);
       ctx.strokeStyle = isSelected ? '#fe6a34' : p.color;
-      ctx.lineWidth = isSelected ? 2 : 1.5;
+      ctx.lineWidth = isSelected ? 2.5 : 1.5;
       ctx.stroke();
 
       // Inner fill
@@ -220,31 +292,34 @@ export default function Interactive3DViewer({
       ctx.fillStyle = isSelected ? '#fe6a34' : '#ffffff';
       ctx.fill();
 
-      // Node Name Label
-      ctx.font = isSelected ? 'bold 12px var(--font-sans)' : '500 11px var(--font-sans)';
-      ctx.fillStyle = isSelected ? '#001736' : '#43474f';
+      // Hotspot Pin Marker Label
+      ctx.font = isSelected ? 'bold 12px var(--font-sans)' : '600 11px var(--font-sans)';
+      ctx.fillStyle = isSelected ? '#001736' : '#1e293b';
       ctx.textAlign = p.projX > centerX ? 'left' : 'right';
       
-      const textX = p.projX > centerX ? p.projX + p.radius + 6 : p.projX - p.radius - 6;
+      const textX = p.projX > centerX ? p.projX + p.radius + 8 : p.projX - p.radius - 8;
       const textY = p.projY + 4;
 
-      // Draw subtle label background for legibility
+      // Label background pill
       const textWidth = ctx.measureText(p.name).width;
-      ctx.fillStyle = '#ffffffdd';
-      ctx.fillRect(
-        p.projX > centerX ? textX - 2 : textX - textWidth - 2,
-        textY - 10,
-        textWidth + 4,
-        14
+      ctx.fillStyle = isCameraAR ? '#001736ee' : '#ffffffdd';
+      ctx.beginPath();
+      ctx.roundRect(
+        p.projX > centerX ? textX - 4 : textX - textWidth - 4,
+        textY - 11,
+        textWidth + 8,
+        16,
+        4
       );
+      ctx.fill();
 
-      ctx.fillStyle = isSelected ? '#001736' : '#43474f';
+      ctx.fillStyle = isCameraAR ? '#ffffff' : isSelected ? '#001736' : '#334155';
       ctx.fillText(p.name, textX, textY);
     });
 
-  }, [points, rotation, zoom, selectedNode]);
+  }, [points, rotation, zoom, selectedNode, explosionFactor, isWireframe, isCameraAR]);
 
-  // Handle Drag Handlers
+  // Mouse drag handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
@@ -267,20 +342,19 @@ export default function Interactive3DViewer({
     setIsDragging(false);
   };
 
-  // Canvas resize listener
+  // Canvas Resize Listener
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
       canvas.width = container.clientWidth;
-      canvas.height = Math.max(320, container.clientHeight);
+      canvas.height = Math.max(340, container.clientHeight);
     };
 
     handleResize();
     const observer = new ResizeObserver(handleResize);
     if (containerRef.current) observer.observe(containerRef.current);
-    
     return () => observer.disconnect();
   }, []);
 
@@ -291,7 +365,6 @@ export default function Interactive3DViewer({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    // Project points to check click collision
     const width = canvas.width;
     const height = canvas.height;
     const centerX = width / 2;
@@ -302,144 +375,212 @@ export default function Interactive3DViewer({
     const sinY = Math.sin(rotation.y);
     const cosY = Math.cos(rotation.y);
 
-    let foundNode: string | null = null;
-    let minDistance = 25; // Click radius margin
+    for (const p of points) {
+      const exX = p.x * explosionFactor;
+      const exY = p.y * explosionFactor;
+      const exZ = p.z * explosionFactor;
 
-    points.forEach((p) => {
-      let x1 = p.x * cosY - p.z * sinY;
-      let z1 = p.x * sinY + p.z * cosY;
-      let y2 = p.y * cosX - z1 * sinX;
-      let z2 = p.y * sinX + z1 * cosX;
+      let x1 = exX * cosY - exZ * sinY;
+      let z1 = exX * sinY + exZ * cosY;
+      let y2 = exY * cosX - z1 * sinX;
+      let z2 = exY * sinX + z1 * cosX;
 
-      const distance = 300;
-      const perspectiveScale = distance / (distance - z2);
-      
+      const perspectiveScale = 300 / (300 - z2);
       const projX = centerX + x1 * zoom * perspectiveScale;
       const projY = centerY + y2 * zoom * perspectiveScale;
 
-      const dist = Math.sqrt((projX - clickX) ** 2 + (projY - clickY) ** 2);
-      if (dist < minDistance) {
-        minDistance = dist;
-        foundNode = p.name;
+      const dist = Math.hypot(clickX - projX, clickY - projY);
+      if (dist < 22) {
+        setSelectedNode(p.name);
+        setActiveHotspot({ name: p.name, description: p.description || '', color: p.color });
+        break;
       }
-    });
-
-    if (foundNode) {
-      setSelectedNode(foundNode);
-      setAutoRotate(false);
     }
   };
 
+  // Take Snapshot Download
+  const handleTakeSnapshot = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `learnflow_3d_${modelName.toLowerCase().replace(/\s+/g, '_')}_snapshot.png`;
+    a.click();
+  };
+
   return (
-    <div className="bg-white border border-card-border rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row h-full">
-      {/* Interactive 3D Canvas Panel */}
-      <div className="flex-1 relative flex flex-col min-h-[320px] md:min-h-0" ref={containerRef}>
-        <div className="absolute top-4 left-4 z-10">
-          <span className="text-xs font-mono bg-primary/10 text-primary px-2.5 py-1 rounded-full font-semibold">
-            {category}
-          </span>
-          <h3 className="text-lg font-bold text-primary mt-1">{modelName}</h3>
-          <p className="text-xs text-charcoal/60 mt-0.5">Drag to rotate • Click nodes to inspect</p>
-        </div>
-
-        {/* 3D Action Controls */}
-        <div className="absolute bottom-4 left-4 z-10 flex gap-2">
-          <button
-            onClick={() => setZoom((z) => Math.min(1.8, z + 0.1))}
-            className="p-1.5 bg-white border border-card-border hover:bg-surface-container rounded-md shadow-xs text-primary transition-all"
-            title="Zoom In"
-            id="btn_zoom_in"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setZoom((z) => Math.max(0.6, z - 0.1))}
-            className="p-1.5 bg-white border border-card-border hover:bg-surface-container rounded-md shadow-xs text-primary transition-all"
-            title="Zoom Out"
-            id="btn_zoom_out"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setAutoRotate((a) => !a)}
-            className={`p-1.5 border rounded-md shadow-xs transition-all flex items-center gap-1.5 text-xs font-semibold ${
-              autoRotate
-                ? 'bg-primary border-primary text-white'
-                : 'bg-white border-card-border hover:bg-surface-container text-primary'
-            }`}
-            id="btn_toggle_rotate"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
-            <span>{autoRotate ? 'Auto Rotating' : 'Rotate Off'}</span>
-          </button>
-        </div>
-
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onClick={handleCanvasClick}
-          className="w-full flex-1 cursor-grab active:cursor-grabbing bg-[#fafafc]"
-          id="interactive_3d_canvas"
+    <div ref={containerRef} className="relative w-full h-full min-h-[480px] bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col justify-between group">
+      
+      {/* Live Video Camera Background (WebXR AR Mode) */}
+      {isCameraAR && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
         />
-      </div>
+      )}
 
-      {/* Explainer Sidebar Panel */}
-      <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-card-border p-5 bg-surface-container-low flex flex-col justify-between">
+      {/* Top Controls Overlay */}
+      <div className="relative z-20 p-4 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-b from-slate-950/90 to-transparent backdrop-blur-md">
         <div>
-          <h4 className="text-xs font-mono font-bold tracking-wider text-primary mb-2 uppercase">
-            Interactive Annotations
-          </h4>
-          
-          {selectedNode ? (
-            <div className="animate-fade-in" key={selectedNode}>
-              <h5 className="text-base font-bold text-primary mb-1.5 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full inline-block bg-secondary animate-pulse" />
-                {selectedNode}
-              </h5>
-              <div className="text-sm text-charcoal/80 leading-relaxed mb-4">
-                <p className="mb-2">
-                  Analyzing the specific role of <strong>{selectedNode}</strong> within the 3D topology of {modelName}.
-                </p>
-                <p className="text-xs text-charcoal/60">
-                  This sub-node is essential for the holistic operations of the educational concept. Double tap to review detailed examination annotations, structural integrity, and syllabus checklists.
-                </p>
-              </div>
-
-              {/* Core Info Chip */}
-              <div className="bg-white border border-card-border p-3 rounded-lg text-xs font-mono text-primary flex flex-col gap-1 shadow-2xs">
-                <div>• Status: Active & Synced</div>
-                <div>• Type: Vector Node (AR)</div>
-                <div>• Priority: High Exam Yield</div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-10 text-charcoal/40 text-sm">
-              <p>Click on any 3D node point to load active syllabus breakdown and details.</p>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              {category}
+            </span>
+            {isMastered && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Mastered
+              </span>
+            )}
+          </div>
+          <h3 className="text-lg font-bold text-white mt-1">{modelName}</h3>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-card-border">
-          {isMastered ? (
-            <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-xs font-semibold">
-              <Award className="w-5 h-5 shrink-0" />
-              <span>You have completed and mastered the 3D model: {modelName}!</span>
-            </div>
-          ) : (
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Camera AR Toggle */}
+          <button
+            onClick={() => setIsCameraAR(!isCameraAR)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              isCameraAR
+                ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30 animate-pulse'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{isCameraAR ? 'Exit AR Mode' : 'WebXR AR View'}</span>
+          </button>
+
+          {/* Wireframe / X-Ray Toggle */}
+          <button
+            onClick={() => setIsWireframe(!isWireframe)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              isWireframe
+                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>X-Ray Wireframe</span>
+          </button>
+
+          {/* Snapshot */}
+          <button
+            onClick={handleTakeSnapshot}
+            title="Download PNG Snapshot"
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-all cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+
+          {onMasterModel && !isMastered && (
             <button
               onClick={onMasterModel}
-              className="w-full bg-primary hover:bg-primary-light text-white text-xs py-2.5 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
-              id="btn_master_model"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center gap-1 cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Mark Concept as Mastered (+5%)</span>
+              <Award className="w-3.5 h-3.5" />
+              <span>Mark Mastered</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* Main 3D Canvas */}
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onClick={handleCanvasClick}
+        className="relative z-10 w-full h-full cursor-grab active:cursor-grabbing"
+      />
+
+      {/* Exploded View Slider Bar Overlay */}
+      <div className="relative z-20 px-6 py-3 bg-slate-950/80 backdrop-blur-xl border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Layers className="w-4 h-4 text-purple-400 shrink-0" />
+          <span className="text-xs font-semibold text-slate-300 whitespace-nowrap">Exploded View:</span>
+          <input
+            type="range"
+            min="1.0"
+            max="2.5"
+            step="0.1"
+            value={explosionFactor}
+            onChange={(e) => setExplosionFactor(parseFloat(e.target.value))}
+            className="w-full sm:w-48 accent-purple-500 cursor-pointer"
+          />
+          <span className="text-xs font-mono text-purple-400 font-bold w-12">
+            {((explosionFactor - 1) * 100).toFixed(0)}%
+          </span>
+        </div>
+
+        {/* Zoom & Rotation Quick Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setZoom((prev) => Math.min(2.5, prev + 0.2))}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-all cursor-pointer"
+            title="Zoom In"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setZoom((prev) => Math.max(0.6, prev - 0.2))}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-all cursor-pointer"
+            title="Zoom Out"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setAutoRotate(!autoRotate)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+              autoRotate ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'
+            }`}
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
+            <span>Auto Orbit</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Floating Interactive Hotspot Popover Card */}
+      {activeHotspot && (
+        <div className="absolute bottom-16 left-6 right-6 sm:right-auto sm:max-w-md z-30 bg-slate-900/95 border border-indigo-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-fade-in space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: activeHotspot.color }}></span>
+              <h4 className="text-sm font-bold text-white">{activeHotspot.name}</h4>
+            </div>
+            <button
+              onClick={() => setActiveHotspot(null)}
+              className="p-1 text-slate-400 hover:text-white rounded-lg bg-slate-800"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            {activeHotspot.description}
+          </p>
+
+          <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-800">
+            <VoiceAssistant textToSpeak={`${activeHotspot.name}: ${activeHotspot.description}`} />
+
+            {onAskAI && (
+              <button
+                onClick={() => onAskAI(`Explain the function and significance of "${activeHotspot.name}" in ${modelName}.`)}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs transition-all shadow flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Ask AI</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
