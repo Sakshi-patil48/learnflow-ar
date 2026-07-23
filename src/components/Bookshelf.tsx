@@ -56,7 +56,7 @@ const renderChapterGraphic = (subject: SubjectName, chapterNumber: number, class
     return (
       <div className="w-full h-full relative overflow-hidden bg-white">
         <img 
-          src={classLevel === '12th' ? "/maths 12.jpeg" : "/math11.jpeg"}
+          src={classLevel === '12th' ? "/maths12.jpeg" : "/math11.jpeg"}
           onError={(e) => {
             const img = e.currentTarget;
             img.style.display = 'none';
@@ -137,7 +137,7 @@ const renderChapterGraphic = (subject: SubjectName, chapterNumber: number, class
     return (
       <div className="w-full h-full relative overflow-hidden bg-white">
         <img 
-          src={classLevel === '12th' ? "/chem 12.jpeg" : classLevel === '11th' ? "/11chem.jpeg" : "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=400&auto=format&fit=crop&q=80"}
+          src={classLevel === '12th' ? "/chem12.jpeg" : classLevel === '11th' ? "/11chem.jpeg" : "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=400&auto=format&fit=crop&q=80"}
           onError={(e) => {
             const img = e.currentTarget;
             img.style.display = 'none';
@@ -589,7 +589,7 @@ export default function Bookshelf({
                 ) : subject === 'Chemistry' && classLevel === '12th' ? (
                   <div className="relative group w-48 md:w-52 h-64 md:h-72 rounded-r-xl overflow-hidden shadow-2xl border border-gray-200/60 transform hover:-translate-y-2 hover:rotate-1 transition-all duration-300 bg-white">
                     <img 
-                      src="/chem 12.jpeg" 
+                      src="/chem12.jpeg" 
                       onError={(e) => {
                         const img = e.currentTarget;
                         img.style.display = 'none';
@@ -634,7 +634,7 @@ export default function Bookshelf({
                 ) : subject === 'Mathematics' && classLevel === '12th' ? (
                   <div className="relative group w-48 md:w-52 h-64 md:h-72 rounded-r-xl overflow-hidden shadow-2xl border border-gray-200/60 transform hover:-translate-y-2 hover:rotate-1 transition-all duration-300 bg-white">
                     <img 
-                      src="/maths 12.jpeg" 
+                      src="/maths12.jpeg" 
                       onError={(e) => {
                         const img = e.currentTarget;
                         img.style.display = 'none';
